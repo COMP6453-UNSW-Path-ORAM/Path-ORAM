@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pathoram-client"
+version = "0.1.0"
+description = "An implementation of a Path ORAM client. Pairs with the library pathoram-server"
+authors = [{ name = "Max Hamilton", email = "max.alexander.hamilton@gmail.com" }]
+requires-python = ">=3.8"
