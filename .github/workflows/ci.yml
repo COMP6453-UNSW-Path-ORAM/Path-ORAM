@@ -31,4 +31,6 @@ jobs:
           mypy libs/pathoram_server/pathoram_server
 
       - name: Run tests
-        run: pytest
+        run: |
+          pytest libs/pathoram_client/pathoram_client_tests
+          pytest libs/pathoram_server/pathoram_server_tests
