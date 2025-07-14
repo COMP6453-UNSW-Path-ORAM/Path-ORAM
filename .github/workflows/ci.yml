@@ -27,7 +27,8 @@ jobs:
         run: |
           black --check .
           ruff check .
-          mypy .
+          mypy libs/pathoram_client/pathoram_client
+          mypy libs/pathoram_server/pathoram_server
 
       - name: Run tests
         run: pytest
