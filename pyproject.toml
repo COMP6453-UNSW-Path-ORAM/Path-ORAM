@@ -13,7 +13,7 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 88
-select = ["E", "F", "I", "UP"]
+lint.select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "packages"]
