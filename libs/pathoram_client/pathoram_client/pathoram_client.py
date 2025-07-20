@@ -7,23 +7,13 @@ import constants
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
-# The Oram presents the following interface to its users:
-# There is a contiguous array of blocks, each containing a number of bytes
-# Each block can be accessed by its address in the array, to be read or written to
-# The behaviour of reading a block which has not yet been written to is undefined
-# The array cannot be resized
 class Oram:
-    # storage_size will be rounded up to the nearest power of 2.
-    # The maximum storage size supported is 2^64 - 1 buckets
-    # This class is parameterised over the method of communication to the server
-    # send_message is a function with the following interface
-    # send_message(message: bytes) -> bytes
-    # It returns the response from the server (which might be empty)
-    # Note that block_size is not the size of the stored blocks, as they must also store
-    # their address and nonce
-    # But block_size is how much data a user can put into each block
-    # The position map takes an address as an index and returns the leaf node the block
-    # at that address is mapped to
+    """The Oram presents the following interface to its users:
+    There is a contiguous array of blocks, each containing a number of bytes
+    Each block can be accessed by its address in the array, to be read or written to
+    The behaviour of reading a block which has not yet been written to is undefined
+    The array cannot be resized"""
+
     def __init__(
         self,
         storage_size: int,
@@ -34,6 +24,18 @@ class Oram:
         stash: Optional[dict[int, bytes]] = None,
         key: Optional[bytes] = None,
     ):
+        """storage_size will be rounded up to the nearest power of 2.
+        The maximum storage size supported is 2^64 - 1 buckets
+        This class is parameterised over the method of communication to the server
+        send_message is a function with the following interface
+        send_message(message: bytes) -> bytes
+        It returns the response from the server (which might be empty)
+        Note that block_size is not the size of the stored blocks, as they must also store
+        their address and nonce
+        But block_size is how much data a user can put into each block
+        The position map takes an address as an index and returns the leaf node the block
+        at that address is mapped to"""
+
         # Adding 1 to the storage size is necessary for dummy addresses,
         # and then the rest of it rounds up to the nearest power of 2
         storage_size += 1
@@ -98,23 +100,23 @@ class Oram:
         for address, block in blocks:
             self.stash[address] = block
 
-    # Takes a byte stream of the form:
-    # (nonce || ciphertext_block)*
-    # The nonce is 12 bytes
-    # The ciphertext_block is self.block_size + 16 bytes
-    # (The 16 is for the AES authentication tag)
-    # Once decrypted, each block is of the form:
-    # address || data
-    # The address is ADDRESS_SIZE bytes
-    # The data is DEFAULT_BLOCK_SIZE bytes
-    # Returns an array of blocks and their addresses with type list[(int, bytes)]
-    # Note that the bytes object is the data from the format above,
-    # and no longer contains the address
-    # If the data cannot be parsed, it will throw a ValueError
-    # If the address = storage_size - 1, this is a dummy block, so throw it away
     def parse_encrypted_blocks(
         self, encrypted_blocks: bytes
     ) -> list[tuple[int, bytes]]:
+        """Takes a byte stream of the form:
+        (nonce || ciphertext_block)*
+        The nonce is 12 bytes
+        The ciphertext_block is self.block_size + 16 bytes
+        (The 16 is for the AES authentication tag)
+        Once decrypted, each block is of the form:
+        address || data
+        The address is ADDRESS_SIZE bytes
+        The data is DEFAULT_BLOCK_SIZE bytes
+        Returns an array of blocks and their addresses with type list[(int, bytes)]
+        Note that the bytes object is the data from the format above,
+        and no longer contains the address
+        If the data cannot be parsed, it will throw a ValueError
+        If the address = storage_size - 1, this is a dummy block, so throw it away"""
         i = 0
         blocks: list[tuple[int, bytes]] = []
         while i < len(encrypted_blocks):
@@ -129,10 +131,10 @@ class Oram:
                 blocks.append((address, block))
         return blocks
 
-    # The inverse of parse_encrypted_blocks
-    # But for a single block
-    # Used before sending the block to the server
     def _encrypt_and_pack_block(self, address: int, block: bytes) -> bytes:
+        """The inverse of parse_encrypted_blocks
+        But for a single block
+        Used before sending the block to the server"""
         nonce: bytes = secrets.token_bytes(12)
         ciphertext_block: bytes = self.aes.encrypt(
             nonce,
