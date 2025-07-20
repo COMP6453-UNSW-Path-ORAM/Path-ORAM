@@ -1,11 +1,10 @@
-import math
 import secrets
 from collections.abc import Callable
 from typing import Optional
 
 import constants
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from bit_util import bit_ceil, get_bucket
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 class Oram:
@@ -27,15 +26,19 @@ class Oram:
     ):
         """storage_size will be rounded up to the nearest power of 2.
         The maximum storage size supported is 2^64 - 1 buckets
+
         This class is parameterised over the method of communication to the server
+
         send_message is a function with the following interface
         send_message(message: bytes) -> bytes
         It returns the response from the server (which might be empty)
-        Note that block_size is not the size of the stored blocks, as they must also store
-        their address and nonce
+
+        Note that block_size is not the size of the stored blocks,
+        as they must also store their address and nonce
         But block_size is how much data a user can put into each block
-        The position map takes an address as an index and returns the leaf node the block
-        at that address is mapped to"""
+
+        The position map takes an address as an index
+        and returns the leaf node the block at that address is mapped to"""
 
         # Adding 1 to the storage size is necessary for dummy addresses,
         # and then the rest of it rounds up to the nearest power of 2
@@ -116,7 +119,8 @@ class Oram:
         If the address = storage_size - 1, this is a dummy block, so throw it away"""
         if len(encrypted_blocks) % self.block_size != 0:
             raise ValueError(
-                f"encrypted_blocks must be a bytestream with blocks of size {self.block_size}"
+                f"encrypted_blocks must be a bytestream"
+                f" with blocks of size {self.block_size}"
             )
         blocks: list[tuple[int, bytes]] = []
         for i in range(0, len(encrypted_blocks), self.block_size):
@@ -144,7 +148,7 @@ class Oram:
 
     def _write_blocks_from_stash(self, leaf_node: int) -> None:
         for i in range(self.levels - 1, -1, -1):
-            valid_block_addresses = []
+            valid_block_addresses: list[int] = []
             for block_address in self.stash.keys():
                 block_leaf_node = self.position_map[block_address]
                 if (
