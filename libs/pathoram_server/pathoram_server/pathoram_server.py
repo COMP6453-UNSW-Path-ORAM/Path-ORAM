@@ -1,13 +1,12 @@
-import constants
-
+import secrets
 from collections.abc import Callable
 from typing import Optional
 
-import secrets
-
+import constants
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 Bucket = list[bytes]
+
 
 # This class is intended to be used in the following simple loop
 # while True:
@@ -48,26 +47,26 @@ class Oram:
         self.levels: int = self.storage_size.bit_length() - 1
 
         # The server starts out full of random encryptions of dummy blocks
-        dummy_address: bytes = (storage_size - 1).to_bytes(constants.ADDRESS_SIZE,
-                                                           byteorder="big")
-        dummy_block: bytes = b'\0' * block_size
+        dummy_address: bytes = (storage_size - 1).to_bytes(
+            constants.ADDRESS_SIZE, byteorder="big"
+        )
+        dummy_block: bytes = b"\0" * block_size
         for _ in range(self.storage_size):
             nonce: bytes = secrets.token_bytes(12)
-            encrypted_block = self.aes.encrypt(nonce,
-                                               dummy_address + dummy_block,
-                                                associated_data=None)
+            encrypted_block = self.aes.encrypt(
+                nonce, dummy_address + dummy_block, associated_data=None
+            )
             self.tree.append(nonce + encrypted_block)
 
     def process_command(self, command: bytes) -> None:
-        if command[0] == b"R":
-            self.send_message( 
+        if command[0:1] == b"R":
+            self.send_message(
                 self._read_path(int.from_bytes(command[1:], byteorder="big"))
             )
-        elif command[1] == b"W":
+        elif command[1:2] == b"W":
             self._process_write_command(command[1:])
         else:
             raise ValueError("Commands must start with 'R' or 'W'")
-    
 
     # Reading a path empties that path, because a read is always followed by a write
     # Which fills the path up again
@@ -79,22 +78,24 @@ class Oram:
                 blocks.append(block)
             self.tree[leaf_node >> i] = []
         return b"".join(blocks)
-    
+
     # A series of these write commands should follow a read
     # The path should be empty after the read, and slowly filled by the write commands
     def _process_write_command(self, command: bytes) -> None:
-        leaf_node_bytes = command[0:constants.ADDRESS_SIZE]
+        leaf_node_bytes = command[0 : constants.ADDRESS_SIZE]
         level_bytes = command[
-            constants.ADDRESS_SIZE:constants.ADDRESS_SIZE + constants.LEVEL_SIZE
+            constants.ADDRESS_SIZE : constants.ADDRESS_SIZE + constants.LEVEL_SIZE
         ]
         leaf_node = int.from_bytes(leaf_node_bytes, byteorder="big")
         level = int.from_bytes(level_bytes, byteorder="big")
-        block = command[constants.ADDRESS_SIZE + constants.LEVEL_SIZE:]
+        block = command[constants.ADDRESS_SIZE + constants.LEVEL_SIZE :]
         # In order to get to the right node, start from the leaf node
         # Which is at position leaf_node+self.storage_size // 2
         # Then go to the parent however many times it takes
         # Which is self.levels - level
-        node_index = (leaf_node+self.storage_size // 2) // (2**(self.levels - level))
+        node_index = (leaf_node + self.storage_size // 2) // (
+            2 ** (self.levels - level)
+        )
         # The client must not write too many blocks to one bucket
         if len(self.tree[node_index]) >= self.blocks_per_bucket:
             raise IndexError("Bucket overflowed")
