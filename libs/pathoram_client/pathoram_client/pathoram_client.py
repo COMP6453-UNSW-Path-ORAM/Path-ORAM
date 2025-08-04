@@ -96,7 +96,7 @@ class Oram:
 
         # Find the leaf node this block is on the path to
         encrypted_blocks = self.send_message(
-                b"R" + old_leaf_node.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
+            b"R" + old_leaf_node.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
         )
         blocks: list[tuple[int, bytes]] = self.parse_encrypted_blocks(encrypted_blocks)
         for address, block in blocks:
