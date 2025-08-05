@@ -6,7 +6,6 @@ import constants
 from bit_util import bit_ceil, get_bucket
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-
 class Oram:
     """The Oram presents the following interface to its users:
     There is a contiguous array of blocks, each containing a number of bytes
@@ -20,7 +19,7 @@ class Oram:
         send_message: Callable[[bytes], bytes],
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
-        position_map: Optional[list[int]] = None,
+        position_map: Optional[list[int] | "Oram"] = None,
         stash: Optional[dict[int, bytes]] = None,
         key: Optional[bytes] = None,
     ):
@@ -77,10 +76,16 @@ class Oram:
         self._write_blocks_from_stash(self.position_map[address])
         return block
 
+    def __getitem__(self, address: int) -> bytes:
+        return self.read_block(address)
+
     def write_block(self, address: int, block: bytes) -> None:
         self._read_block_into_stash(address)
         self.stash[address] = block
         self._write_blocks_from_stash(self.position_map[address])
+
+    def __setitem__(self, address: int, block: bytes) -> None:
+        return self.write_block(address, block)
 
     def _read_block_into_stash(self, address: int) -> None:
         if not (0 <= address < self.storage_size * self.blocks_per_bucket):
@@ -179,3 +184,49 @@ class Oram:
                 )
             for address in valid_block_addresses:
                 self.stash.pop(address)
+
+
+class OramRecursive:
+    """Recursive variant of Oram with uniform block size"""
+    def __init__(
+        self,
+        storage_size: int,
+        send_message: Callable[[bytes], bytes],
+        block_size: int = constants.DEFAULT_BLOCK_SIZE,
+        blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
+        recursive_depth: int = constants.DEFAULT_RECURSIVE_DEPTH,
+        stash: Optional[dict[int, bytes]] = None,
+        key: Optional[bytes] = None,
+    ):
+        self.orams: list[Oram] = []
+        for i in range(recursive_depth):
+            self.orams.append(Oram(
+                storage_size=storage_size,
+                send_message=lambda x: None,
+                block_size=block_size,
+                blocks_per_bucket=blocks_per_bucket,
+                position_map=self.orams[i-1] if self.orams else None,
+                stash=stash,
+                key=key,
+            ))
+        self.orams.append(Oram(
+            storage_size=storage_size,
+            send_message=send_message,
+            block_size=block_size,
+            blocks_per_bucket=blocks_per_bucket,
+            position_map=self.orams[-1] if self.orams else None,
+            stash=stash,
+            key=key,
+        ))
+
+    def read_block(self, address: int) -> bytes:
+        return self.orams[-1].read_block(address)
+
+    def __getitem__(self, address: int) -> bytes:
+        return self.read_block(address)
+
+    def write_block(self, address: int, block: bytes) -> None:
+        self.orams[-1].write_block(address, block)
+
+    def __setitem__(self, address: int, block: bytes) -> None:
+        return self.write_block(address, block)
