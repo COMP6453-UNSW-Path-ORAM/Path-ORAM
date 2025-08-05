@@ -20,6 +20,7 @@ def get_bucket(x: int, level: int, num_levels: int) -> int:
 
     Returns an integer which is the index of the bucket from left to right
     along the given level
+
     """
     assert 0 <= level < num_levels
     assert 0 <= x < (1 << (num_levels - 1))
