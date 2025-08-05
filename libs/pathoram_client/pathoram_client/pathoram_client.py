@@ -206,8 +206,7 @@ class Oram:
 
 
 class OramRecursive:
-    """Recursive variant of Oram with uniform block size"""
-
+    """Recursive variant of Oram with uniform block size at each level of recursive"""
     def __init__(
         self,
         storage_size: int,
