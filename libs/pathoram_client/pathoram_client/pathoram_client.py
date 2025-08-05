@@ -2,8 +2,8 @@ import secrets
 from collections.abc import Callable
 from typing import Optional, Union
 
-import constants
-from bit_util import bit_ceil, get_bucket
+import pathoram_client.constants as constants
+from pathoram_client.bit_util import bit_ceil, get_bucket
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
@@ -167,7 +167,7 @@ class Oram:
         for i in range(self.levels - 1, -1, -1):
             valid_block_addresses: list[int] = []
             for block_address in self.stash.keys():
-                block_leaf_node = self.position_map[block_address]
+                block_leaf_node = int.from_bytes(self.position_map[block_address], byteorder="big")
                 if (
                     get_bucket(block_leaf_node, i, self.levels)
                     == get_bucket(leaf_node, i, self.levels)
