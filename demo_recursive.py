@@ -2,17 +2,17 @@ import os
 import queue
 import sys
 import threading
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from pathoram_client import ADDRESS_SIZE
+from pathoram_client import OramRecursive as ClientOramRecursive
+from pathoram_server import Oram as ServerOram
 
 current_dir = os.path.dirname(__file__)
 lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_client"))
 sys.path.append(lib_path)
 lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_server"))
 sys.path.append(lib_path)
-
-from pathoram_client import OramRecursive as ClientOramRecursive  # noqa: E402
-from pathoram_server import Oram as ServerOram  # noqa: E402
-from pathoram_client import ADDRESS_SIZE
 
 client_message_queue: queue.Queue[bytes] = queue.Queue()
 server_message_queue: queue.Queue[bytes] = queue.Queue()
@@ -29,7 +29,7 @@ def main() -> None:
         target=watch_for_messages_server, args=(server_oram,)
     )
     server_thread.start()
-    
+
     client_oram = ClientOramRecursive(
         2047,
         send_message_read=send_message_read,
@@ -69,13 +69,15 @@ def send_message_init(
         + block_size.to_bytes(ADDRESS_SIZE, byteorder="big")
         + blocks_per_bucket.to_bytes(ADDRESS_SIZE, byteorder="big")
     )
-    message = client_message_queue.get()
+    client_message_queue.get()
 
 
 def send_message_read(client_id: bytes, addr: int) -> bytes:
     global server_message_queue
     global client_message_queue
-    server_message_queue.put(client_id + b"R" + addr.to_bytes(ADDRESS_SIZE, byteorder="big"))
+    server_message_queue.put(
+        client_id + b"R" + addr.to_bytes(ADDRESS_SIZE, byteorder="big")
+    )
     message = client_message_queue.get()
     return message
 

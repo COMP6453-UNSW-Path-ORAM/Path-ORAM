@@ -1,5 +1,5 @@
 import secrets
-from typing import Callable, Optional
+from typing import Callable
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -28,7 +28,7 @@ class OramPerClient:
         # The parent of a node with index i is (i-1) // 2
         # The left child of a node with index i is 2*i+1
         # The right child of a node with index i is 2*i+2
-        self.tree: list[list[bytes]] = []
+        self.tree: list[list[bytes]] = [[] for _ in range(self.storage_size)]
 
         self.storage_size: int = storage_size
 
@@ -46,7 +46,6 @@ class OramPerClient:
         )
         dummy_block: bytes = b"\0" * block_size
         for i in range(self.storage_size):
-            self.tree.append([])
             for _ in range(self.blocks_per_bucket):
                 nonce: bytes = secrets.token_bytes(12)
                 encrypted_block = self.aes.encrypt(
@@ -77,10 +76,8 @@ class OramPerClient:
         leaf_node += self.storage_size // 2
         blocks: list[bytes] = []
         current_node = leaf_node
-        for i in range(self.levels - 1, -1, -1):
-            bucket = self.tree[current_node]
-            for block in bucket:
-                blocks.append(block)
+        for _ in range(self.levels):
+            blocks += self.tree[current_node]
             self.tree[current_node] = []
             # Get the parent of the current node
             current_node = (current_node - 1) // 2

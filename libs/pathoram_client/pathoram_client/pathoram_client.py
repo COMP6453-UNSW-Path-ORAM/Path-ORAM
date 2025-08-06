@@ -1,8 +1,8 @@
 import secrets
 from typing import Callable, Optional, Union
+from uuid import uuid4
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from uuid import uuid4
 
 from . import constants
 from .bit_util import bit_ceil, get_bucket
@@ -63,12 +63,16 @@ class Oram:
         self.dummy_block: bytes = b"\0" * block_size
 
         if position_map is None:
-            self.position_map: Union[list[bytes], Oram] = [0 for _ in range(self.storage_size)]
+            self.position_map: Union[list[bytes], Oram] = [
+                b"0" * constants.ADDRESS_SIZE for _ in range(self.storage_size)
+            ]
         else:
             self.position_map = position_map
         for i in range(self.storage_size):
-            self.position_map[i] = secrets.randbelow(self.leaf_nodes).to_bytes(constants.ADDRESS_SIZE, byteorder="big")
-        
+            self.position_map[i] = secrets.randbelow(self.leaf_nodes).to_bytes(
+                constants.ADDRESS_SIZE, byteorder="big"
+            )
+
         if stash is None:
             self.stash: dict[int, bytes] = {}
         else:
@@ -206,7 +210,9 @@ class Oram:
                 )
             for block in valid_blocks:
                 self.send_message_write(
-                    self.client_id, leaf_node, i.to_bytes(constants.LEVEL_SIZE, byteorder="big") + block
+                    self.client_id,
+                    leaf_node,
+                    i.to_bytes(constants.LEVEL_SIZE, byteorder="big") + block,
                 )
             for address in valid_block_addresses:
                 self.stash.pop(address)
@@ -228,14 +234,16 @@ class OramRecursive:
         key: Optional[bytes] = None,
     ):
         self.orams: list[Oram] = []
-        for i in range(recursive_depth+1):
+        for i in range(recursive_depth + 1):
             self.orams.append(
                 Oram(
                     storage_size=storage_size,
                     send_message_init=send_message_init,
                     send_message_read=send_message_read,
                     send_message_write=send_message_write,
-                    block_size=block_size if i == recursive_depth else constants.ADDRESS_SIZE,
+                    block_size=(
+                        block_size if i == recursive_depth else constants.ADDRESS_SIZE
+                    ),
                     blocks_per_bucket=blocks_per_bucket,
                     position_map=self.orams[-1] if self.orams else None,
                     stash=stash,
