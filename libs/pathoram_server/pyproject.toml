@@ -8,3 +8,4 @@ version = "0.1.0"
 description = "An implementation of a Path ORAM server. Pairs with the library pathoram_client"
 authors = [{ name = "Max Hamilton", email = "max.alexander.hamilton@gmail.com" }]
 requires-python = ">=3.9"
+dependencies = ["cryptography >=45.0.6"]
