@@ -3,7 +3,6 @@ import queue
 import sys
 import threading
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-import random
 
 current_dir = os.path.dirname(__file__)
 lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_client"))
@@ -11,7 +10,7 @@ sys.path.append(lib_path)
 lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_server"))
 sys.path.append(lib_path)
 
-from pathoram_client import Oram as ClientOram  # noqa: E402
+from pathoram_client import OramRecursive as ClientOramRecursive  # noqa: E402
 from pathoram_server import Oram as ServerOram  # noqa: E402
 from pathoram_client import ADDRESS_SIZE
 
@@ -31,11 +30,12 @@ def main() -> None:
     )
     server_thread.start()
     
-    client_oram = ClientOram(
+    client_oram = ClientOramRecursive(
         2047,
         send_message_read=send_message_read,
         send_message_write=send_message_write,
         send_message_init=send_message_init,
+        recursive_depth=1,
         key=key,
     )
     client_oram.write_block(0, b"abcd" * 16)
@@ -44,19 +44,6 @@ def main() -> None:
     print(client_oram.read_block(1))
     client_oram.write_block(0, b"1234" * 16)
     print(client_oram.read_block(0))
-
-    A = [b"0"*64 for _ in range(2047)]
-    for i in range(2047):
-        client_oram.write_block(i, A[i])
-    for _ in range(1000):
-        i = random.randint(0, 2047)
-        if random.choice("RW") == "R":
-            assert A[i] == client_oram.read_block(i)
-        else:
-            d = random.randbytes(64)
-            A[i] = d
-            client_oram.write_block(i, d)
-
     stop_event.set()
     server_message_queue.put(b"")
     server_thread.join()

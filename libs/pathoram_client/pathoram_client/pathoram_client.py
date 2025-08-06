@@ -2,6 +2,7 @@ import secrets
 from typing import Callable, Optional, Union
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from uuid import uuid4
 
 from . import constants
 from .bit_util import bit_ceil, get_bucket
@@ -17,8 +18,9 @@ class Oram:
     def __init__(
         self,
         storage_size: int,
-        send_message_read: Callable[[int], bytes],
-        send_message_write: Callable[[int, bytes], None],
+        send_message_init: Callable[[bytes, int, int, int], None],
+        send_message_read: Callable[[bytes, int], bytes],
+        send_message_write: Callable[[bytes, int, bytes], None],
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
         position_map: Optional[Union[list[bytes], "Oram"]] = None,
@@ -61,15 +63,12 @@ class Oram:
         self.dummy_block: bytes = b"\0" * block_size
 
         if position_map is None:
-            self.position_map: Union[list[bytes], Oram] = [
-                secrets.randbelow(self.leaf_nodes).to_bytes(
-                    constants.LEVEL_SIZE, byteorder="big"
-                )
-                for _ in range(self.storage_size)
-            ]
+            self.position_map: Union[list[bytes], Oram] = [0 for _ in range(self.storage_size)]
         else:
             self.position_map = position_map
-
+        for i in range(self.storage_size):
+            self.position_map[i] = secrets.randbelow(self.leaf_nodes).to_bytes(constants.ADDRESS_SIZE, byteorder="big")
+        
         if stash is None:
             self.stash: dict[int, bytes] = {}
         else:
@@ -82,6 +81,10 @@ class Oram:
 
         self.send_message_read = send_message_read
         self.send_message_write = send_message_write
+        self.client_id = uuid4().bytes
+        send_message_init(
+            self.client_id, self.storage_size, block_size, self.blocks_per_bucket
+        )
 
     def read_block(self, address: int) -> bytes:
         leaf_node = int.from_bytes(self.position_map[address], byteorder="big")
@@ -109,7 +112,7 @@ class Oram:
         # Remap block to a new leaf node
         old_leaf_node = int.from_bytes(self.position_map[address], byteorder="big")
         self.position_map[address] = secrets.randbelow(self.leaf_nodes).to_bytes(
-            constants.LEVEL_SIZE, byteorder="big"
+            constants.ADDRESS_SIZE, byteorder="big"
         )
 
         # If the block is in the stash already, leave it be
@@ -117,7 +120,7 @@ class Oram:
             return
 
         # Find the leaf node this block is on the path to
-        encrypted_blocks = self.send_message_read(old_leaf_node)[1:]
+        encrypted_blocks = self.send_message_read(self.client_id, old_leaf_node)[1:]
         blocks: list[tuple[int, bytes]] = self.parse_encrypted_blocks(encrypted_blocks)
         for address, block in blocks:
             self.stash[address] = block
@@ -145,10 +148,11 @@ class Oram:
             len(encrypted_blocks)
             != self.block_size * self.levels * self.blocks_per_bucket
         ):
+            # print(self.block_size, self.levels, self.blocks_per_bucket)
             raise ValueError(
                 f"encrypted_blocks must be a bytestream"
                 f" with blocks of size {self.block_size}"
-                f", but instead has blocks of size"
+                f", but instead has blocks of size "
                 f"{len(encrypted_blocks)/self.levels/self.blocks_per_bucket}"
                 f", with all blocks being of size {len(encrypted_blocks)}"
             )
@@ -203,11 +207,23 @@ class Oram:
                 )
             for block in valid_blocks:
                 self.send_message_write(
-                    leaf_node, i.to_bytes(constants.LEVEL_SIZE, byteorder="big") + block
+                    self.client_id, leaf_node, i.to_bytes(constants.LEVEL_SIZE, byteorder="big") + block
                 )
             for address in valid_block_addresses:
                 self.stash.pop(address)
 
+
+class M:
+    def __init__(self): self.l = {}
+    def __getitem__(self, i):
+        assert 0 <= i < 2047
+        print("R", i)
+        return self.l[i]
+    def __setitem__(self, i, d):
+        assert 0 <= i < 2047
+        assert len(d) == constants.ADDRESS_SIZE
+        print("W", i, d)
+        self.l[i] = d
 
 class OramRecursive:
     """Recursive variant of Oram with uniform block size at each level of recursive"""
@@ -215,8 +231,9 @@ class OramRecursive:
     def __init__(
         self,
         storage_size: int,
-        send_message_read: Callable[[int], bytes],
-        send_message_write: Callable[[int, bytes], None],
+        send_message_init: Callable[[bytes, int, int, int], None],
+        send_message_read: Callable[[bytes, int], bytes],
+        send_message_write: Callable[[bytes, int, bytes], None],
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
         recursive_depth: int = constants.DEFAULT_RECURSIVE_DEPTH,
@@ -224,39 +241,20 @@ class OramRecursive:
         key: Optional[bytes] = None,
     ):
         self.orams: list[Oram] = []
-        for i in range(recursive_depth):
+        for i in range(recursive_depth+1):
             self.orams.append(
                 Oram(
                     storage_size=storage_size,
-                    send_message_read=lambda addr: send_message_read(
-                        addr + i * storage_size
-                    ),
-                    send_message_write=lambda addr, data: send_message_write(
-                        addr + i * storage_size, data
-                    ),
-                    block_size=block_size,
+                    send_message_init=send_message_init,
+                    send_message_read=send_message_read,
+                    send_message_write=send_message_write,
+                    block_size=block_size if i == recursive_depth else constants.ADDRESS_SIZE,
                     blocks_per_bucket=blocks_per_bucket,
-                    position_map=self.orams[i - 1] if self.orams else None,
+                    position_map=self.orams[-1] if self.orams else None,
                     stash=stash,
                     key=key,
                 )
             )
-        self.orams.append(
-            Oram(
-                storage_size=storage_size,
-                send_message_read=lambda addr: send_message_read(
-                    addr + recursive_depth * storage_size
-                ),
-                send_message_write=lambda addr, data: send_message_write(
-                    addr + recursive_depth * storage_size, data
-                ),
-                block_size=block_size,
-                blocks_per_bucket=blocks_per_bucket,
-                position_map=self.orams[-1] if self.orams else None,
-                stash=stash,
-                key=key,
-            )
-        )
 
     def read_block(self, address: int) -> bytes:
         return self.orams[-1].read_block(address)
