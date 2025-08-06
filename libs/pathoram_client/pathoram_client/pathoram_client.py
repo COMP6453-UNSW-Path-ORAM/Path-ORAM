@@ -1,5 +1,5 @@
 import secrets
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -20,11 +20,12 @@ class Oram:
         send_message: Callable[[bytes], bytes],
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
-        position_map: Optional[List[int]] = None,
-        stash: Optional[Dict[int, bytes]] = None,
+        position_map: Optional[list[int]] = None,
+        stash: Optional[dict[int, bytes]] = None,
         key: Optional[bytes] = None,
     ):
-        """storage_size will be rounded up to the nearest power of 2 strictly greater, minus 1.
+        """storage_size will be rounded up
+        to the nearest power of 2 strictly greater, minus 1.
         For example, to store 6 buckets requires a storage size of 7
         To store 8 buckets requires a storage size of 15
         The maximum storage size supported is 2^64 - 1 buckets
@@ -106,13 +107,13 @@ class Oram:
         encrypted_blocks = self.send_message(
             b"R" + old_leaf_node.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
         )[1:]
-        blocks: List[Tuple[int, bytes]] = self.parse_encrypted_blocks(encrypted_blocks)
+        blocks: list[tuple[int, bytes]] = self.parse_encrypted_blocks(encrypted_blocks)
         for address, block in blocks:
             self.stash[address] = block
 
     def parse_encrypted_blocks(
         self, encrypted_blocks: bytes
-    ) -> List[Tuple[int, bytes]]:
+    ) -> list[tuple[int, bytes]]:
         """Takes a byte stream of the form:
         (nonce || ciphertext_block)*
         The nonce is 12 bytes
@@ -126,7 +127,8 @@ class Oram:
         Note that the bytes object is the data from the format above,
         and no longer contains the address
         If the data cannot be parsed, it will throw a ValueError
-        If the address = 256**constants.ADDRESS_SIZE - 1, this is a dummy block, so throw it away
+        If the address = 256**constants.ADDRESS_SIZE - 1, this is a dummy block,
+        so throw it away
         """
         if (
             len(encrypted_blocks)
@@ -135,10 +137,11 @@ class Oram:
             raise ValueError(
                 f"encrypted_blocks must be a bytestream"
                 f" with blocks of size {self.block_size}"
-                f", but instead has blocks of size {len(encrypted_blocks)/self.levels/self.blocks_per_bucket}"
+                f", but instead has blocks of size"
+                f"{len(encrypted_blocks)/self.levels/self.blocks_per_bucket}"
                 f", with all blocks being of size {len(encrypted_blocks)}"
             )
-        blocks: List[Tuple[int, bytes]] = []
+        blocks: list[tuple[int, bytes]] = []
         for i in range(0, len(encrypted_blocks), self.block_size):
             nonce = encrypted_blocks[i : i + constants.NONCE_SIZE]
             ciphertext_block = encrypted_blocks[

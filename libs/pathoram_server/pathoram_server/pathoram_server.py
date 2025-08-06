@@ -1,5 +1,5 @@
 import secrets
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -19,8 +19,8 @@ class Oram:
         key: bytes,
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
-        position_map: Optional[List[int]] = None,
-        stash: Optional[Dict[int, bytes]] = None,
+        position_map: Optional[list[int]] = None,
+        stash: Optional[dict[int, bytes]] = None,
     ):
         # The binary tree is an array in memory
         # Such that self.tree[0] is the root node
@@ -29,7 +29,7 @@ class Oram:
         # The parent of a node with index i is (i-1) // 2
         # The left child of a node with index i is 2*i+1
         # The right child of a node with index i is 2*i+2
-        self.tree: list[List[bytes]] = []
+        self.tree: list[list[bytes]] = []
 
         self.storage_size: int = storage_size
 
@@ -56,8 +56,7 @@ class Oram:
                 self.tree[i].append(nonce + encrypted_block)
 
     def process_command(self, command: bytes) -> None:
-        #print(command)
-        if command[0:1] == b"R":
+        if command[0:1]== b"R":
             self.send_message(
                 b"R" + self._read_path(int.from_bytes(command[1:], byteorder="big"))
             )

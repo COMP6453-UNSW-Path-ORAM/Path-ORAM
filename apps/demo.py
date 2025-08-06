@@ -11,8 +11,8 @@ sys.path.append(lib_path)
 lib_path = os.path.abspath(os.path.join(current_dir, "../libs/pathoram_server"))
 sys.path.append(lib_path)
 
-from pathoram_client import Oram as ClientOram
-from pathoram_server import Oram as ServerOram
+from pathoram_client import Oram as ClientOram  #noqa: E402
+from pathoram_server import Oram as ServerOram  #noqa: E402
 
 client_message_queue = queue.Queue()
 server_message_queue = queue.Queue()
@@ -29,7 +29,7 @@ def main():
     )
     server_thread.start()
     client_oram.write_block(0, b"abcd" * 16)
-    client_oram.write_block(1, b"dbac"*16)
+    client_oram.write_block(1, b"dbac" * 16)
     print(client_oram.read_block(0))
     print(client_oram.read_block(1))
     client_oram.write_block(0, b"1234" * 16)

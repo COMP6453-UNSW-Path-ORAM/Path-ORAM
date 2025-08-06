@@ -7,4 +7,4 @@ name = "pathoram_client"
 version = "0.1.0"
 description = "An implementation of a Path ORAM client. Pairs with the library pathoram_server"
 authors = [{ name = "Max Hamilton", email = "max.alexander.hamilton@gmail.com" }]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
