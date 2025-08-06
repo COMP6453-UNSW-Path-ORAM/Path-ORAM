@@ -11,8 +11,8 @@ sys.path.append(lib_path)
 lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_server"))
 sys.path.append(lib_path)
 
-from pathoram_client import Oram as ClientOram  #noqa: E402
-from pathoram_server import Oram as ServerOram  #noqa: E402
+from pathoram_client import Oram as ClientOram  # noqa: E402
+from pathoram_server import Oram as ServerOram  # noqa: E402
 
 client_message_queue: queue.Queue[bytes] = queue.Queue()
 server_message_queue: queue.Queue[bytes] = queue.Queue()

@@ -56,7 +56,7 @@ class Oram:
                 self.tree[i].append(nonce + encrypted_block)
 
     def process_command(self, command: bytes) -> None:
-        if command[0:1]== b"R":
+        if command[0:1] == b"R":
             self.send_message(
                 b"R" + self._read_path(int.from_bytes(command[1:], byteorder="big"))
             )
