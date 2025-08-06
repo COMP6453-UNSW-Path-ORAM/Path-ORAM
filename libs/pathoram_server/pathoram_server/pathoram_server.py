@@ -1,11 +1,9 @@
 import secrets
-from collections.abc import Callable
-from typing import Optional
+from typing import Callable, Optional
 
-import constants
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-Bucket = list[bytes]
+from . import constants
 
 
 # This class is intended to be used in the following simple loop
@@ -31,52 +29,62 @@ class Oram:
         # The parent of a node with index i is (i-1) // 2
         # The left child of a node with index i is 2*i+1
         # The right child of a node with index i is 2*i+2
-        self.tree: list[Bucket] = []
+        self.tree: list[list[bytes]] = []
 
-        # TODO: make this the next highest power of 2 like in the client
-        self.storage_size = storage_size
+        self.storage_size: int = storage_size
 
         self.aes = AESGCM(key)
 
         self.send_message = send_message
 
-        self.storage_size = storage_size
-
         self.blocks_per_bucket = blocks_per_bucket
 
-        self.levels: int = self.storage_size.bit_length() - 1
+        self.levels: int = self.storage_size.bit_length()
 
         # The server starts out full of random encryptions of dummy blocks
-        dummy_address: bytes = (storage_size - 1).to_bytes(
+        dummy_address: bytes = (256**constants.ADDRESS_SIZE - 1).to_bytes(
             constants.ADDRESS_SIZE, byteorder="big"
         )
         dummy_block: bytes = b"\0" * block_size
-        for _ in range(self.storage_size):
-            nonce: bytes = secrets.token_bytes(12)
-            encrypted_block = self.aes.encrypt(
-                nonce, dummy_address + dummy_block, associated_data=None
-            )
-            self.tree.append(nonce + encrypted_block)
+        for i in range(self.storage_size):
+            self.tree.append([])
+            for _ in range(self.blocks_per_bucket):
+                nonce: bytes = secrets.token_bytes(12)
+                encrypted_block = self.aes.encrypt(
+                    nonce, dummy_address + dummy_block, associated_data=None
+                )
+                self.tree[i].append(nonce + encrypted_block)
 
     def process_command(self, command: bytes) -> None:
         if command[0:1] == b"R":
             self.send_message(
-                self._read_path(int.from_bytes(command[1:], byteorder="big"))
+                b"R" + self._read_path(int.from_bytes(command[1:], byteorder="big"))
             )
-        elif command[1:2] == b"W":
+        elif command[0:1] == b"W":
             self._process_write_command(command[1:])
+            self.send_message(b"W")
         else:
-            raise ValueError("Commands must start with 'R' or 'W'")
+            self.send_message(b"E")
+            raise ValueError(
+                "Commands must start with 'R' or 'W'. This command starts with "
+                + str(command[0:1])
+            )
 
     # Reading a path empties that path, because a read is always followed by a write
     # Which fills the path up again
     def _read_path(self, leaf_node: int) -> bytes:
+        # Adjust leaf node from measuring from the left on the leaf level
+        # to measuring including all levels
+        leaf_node += self.storage_size // 2
         blocks: list[bytes] = []
-        for i in range(leaf_node.bit_length(), -1, -1):
-            bucket = self.tree[leaf_node >> i]
+        current_node = leaf_node
+        for i in range(self.levels - 1, -1, -1):
+            bucket = self.tree[current_node]
             for block in bucket:
                 blocks.append(block)
-            self.tree[leaf_node >> i] = []
+            self.tree[current_node] = []
+            # Get the parent of the current node
+            current_node = (current_node - 1) // 2
         return b"".join(blocks)
 
     # A series of these write commands should follow a read
@@ -92,10 +100,10 @@ class Oram:
         # In order to get to the right node, start from the leaf node
         # Which is at position leaf_node+self.storage_size // 2
         # Then go to the parent however many times it takes
-        # Which is self.levels - level
-        node_index = (leaf_node + self.storage_size // 2) // (
-            2 ** (self.levels - level)
-        )
+        # Which is self.levels - level - 1
+        node_index = leaf_node + self.storage_size // 2
+        for _ in range(self.levels - level - 1):
+            node_index = (node_index - 1) // 2
         # The client must not write too many blocks to one bucket
         if len(self.tree[node_index]) >= self.blocks_per_bucket:
             raise IndexError("Bucket overflowed")

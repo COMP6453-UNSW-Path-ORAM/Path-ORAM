@@ -1,10 +1,10 @@
 import secrets
-from collections.abc import Callable
-from typing import Optional
+from typing import Callable, Optional
 
-import constants
-from bit_util import bit_ceil, get_bucket
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from . import constants
+from .bit_util import bit_ceil, get_bucket
 
 
 class Oram:
@@ -24,7 +24,10 @@ class Oram:
         stash: Optional[dict[int, bytes]] = None,
         key: Optional[bytes] = None,
     ):
-        """storage_size will be rounded up to the nearest power of 2.
+        """storage_size will be rounded up
+        to the nearest power of 2 strictly greater, minus 1.
+        For example, to store 6 buckets requires a storage size of 7
+        To store 8 buckets requires a storage size of 15
         The maximum storage size supported is 2^64 - 1 buckets
 
         This class is parameterised over the method of communication to the server
@@ -34,19 +37,23 @@ class Oram:
         It returns the response from the server (which might be empty)
 
         Note that block_size is not the size of the stored blocks,
-        as they must also store their address and nonce
+        as they must also store their address and nonce and auth tag
         But block_size is how much data a user can put into each block
 
         The position map takes an address as an index
         and returns the leaf node the block at that address is mapped to"""
 
-        # Adding 1 to the storage size is necessary for dummy addresses,
-        # and then the rest of it rounds up to the nearest power of 2
-        self.storage_size: int = bit_ceil(storage_size + 1)
+        # Round up to the nearest power of 2 - 1
+        self.storage_size: int = bit_ceil(storage_size + 1) - 1
 
-        self.leaf_nodes: int = storage_size // 2
-        self.levels: int = self.storage_size.bit_length() - 1
-        self.block_size = block_size + constants.ADDRESS_SIZE + constants.NONCE_SIZE
+        self.levels: int = self.storage_size.bit_length()
+        self.leaf_nodes: int = (self.storage_size + 1) // 2
+        self.block_size = (
+            block_size
+            + constants.ADDRESS_SIZE
+            + constants.NONCE_SIZE
+            + constants.AUTH_TAG_SIZE
+        )
         self.blocks_per_bucket = blocks_per_bucket
 
         # A constant block of all 0s to use as a dummy block
@@ -72,15 +79,17 @@ class Oram:
         self.send_message = send_message
 
     def read_block(self, address: int) -> bytes:
+        leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         block = self.stash[address]
-        self._write_blocks_from_stash(self.position_map[address])
+        self._write_blocks_from_stash(leaf_node)
         return block
 
     def write_block(self, address: int, block: bytes) -> None:
+        leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         self.stash[address] = block
-        self._write_blocks_from_stash(self.position_map[address])
+        self._write_blocks_from_stash(leaf_node)
 
     def _read_block_into_stash(self, address: int) -> None:
         if not (0 <= address < self.storage_size * self.blocks_per_bucket):
@@ -97,7 +106,7 @@ class Oram:
         # Find the leaf node this block is on the path to
         encrypted_blocks = self.send_message(
             b"R" + old_leaf_node.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
-        )
+        )[1:]
         blocks: list[tuple[int, bytes]] = self.parse_encrypted_blocks(encrypted_blocks)
         for address, block in blocks:
             self.stash[address] = block
@@ -118,11 +127,19 @@ class Oram:
         Note that the bytes object is the data from the format above,
         and no longer contains the address
         If the data cannot be parsed, it will throw a ValueError
-        If the address = storage_size - 1, this is a dummy block, so throw it away"""
-        if len(encrypted_blocks) % self.block_size != 0:
+        If the address = 256**constants.ADDRESS_SIZE - 1, this is a dummy block,
+        so throw it away
+        """
+        if (
+            len(encrypted_blocks)
+            != self.block_size * self.levels * self.blocks_per_bucket
+        ):
             raise ValueError(
                 f"encrypted_blocks must be a bytestream"
                 f" with blocks of size {self.block_size}"
+                f", but instead has blocks of size"
+                f"{len(encrypted_blocks)/self.levels/self.blocks_per_bucket}"
+                f", with all blocks being of size {len(encrypted_blocks)}"
             )
         blocks: list[tuple[int, bytes]] = []
         for i in range(0, len(encrypted_blocks), self.block_size):
@@ -132,7 +149,8 @@ class Oram:
             ]
             block = self.aes.decrypt(nonce, ciphertext_block, associated_data=None)
             address = int.from_bytes(block[: constants.ADDRESS_SIZE], byteorder="big")
-            if address != self.storage_size - 1:
+            block = block[constants.ADDRESS_SIZE :]
+            if address != 256**constants.ADDRESS_SIZE - 1:
                 blocks.append((address, block))
         return blocks
 
@@ -163,11 +181,11 @@ class Oram:
                 self._encrypt_and_pack_block(address, self.stash[address])
                 for address in valid_block_addresses
             ]
+            # Pad with dummy blocks
             while len(valid_blocks) < self.blocks_per_bucket:
-                # The largest address is reserved for dummy blocks
                 valid_blocks.append(
                     self._encrypt_and_pack_block(
-                        self.storage_size - 1, self.dummy_block
+                        256**constants.ADDRESS_SIZE - 1, self.dummy_block
                     )
                 )
             for block in valid_blocks:
