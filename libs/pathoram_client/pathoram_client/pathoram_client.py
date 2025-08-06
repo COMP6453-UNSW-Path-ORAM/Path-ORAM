@@ -148,7 +148,6 @@ class Oram:
             len(encrypted_blocks)
             != self.block_size * self.levels * self.blocks_per_bucket
         ):
-            # print(self.block_size, self.levels, self.blocks_per_bucket)
             raise ValueError(
                 f"encrypted_blocks must be a bytestream"
                 f" with blocks of size {self.block_size}"
@@ -212,18 +211,6 @@ class Oram:
             for address in valid_block_addresses:
                 self.stash.pop(address)
 
-
-class M:
-    def __init__(self): self.l = {}
-    def __getitem__(self, i):
-        assert 0 <= i < 2047
-        print("R", i)
-        return self.l[i]
-    def __setitem__(self, i, d):
-        assert 0 <= i < 2047
-        assert len(d) == constants.ADDRESS_SIZE
-        print("W", i, d)
-        self.l[i] = d
 
 class OramRecursive:
     """Recursive variant of Oram with uniform block size at each level of recursive"""

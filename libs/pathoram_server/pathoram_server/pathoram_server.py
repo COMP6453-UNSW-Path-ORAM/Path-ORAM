@@ -121,7 +121,6 @@ class Oram:
 
     def process_command(self, command: bytes) -> None:
         client_id, command = command[:16], command[16:]
-        # print(client_id, command)
         if command[0:1] == b"I":
             command = command[1:]
             storage_size = int.from_bytes(
