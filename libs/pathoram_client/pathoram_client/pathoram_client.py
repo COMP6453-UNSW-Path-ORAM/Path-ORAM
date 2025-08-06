@@ -1,11 +1,10 @@
 import secrets
-from typing import Callable
-from typing import Optional
-from typing import List, Dict, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from . import constants
 from .bit_util import bit_ceil, get_bucket
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 class Oram:
@@ -44,11 +43,16 @@ class Oram:
         and returns the leaf node the block at that address is mapped to"""
 
         # Round up to the nearest power of 2 - 1
-        self.storage_size: int = bit_ceil(storage_size+1) - 1
+        self.storage_size: int = bit_ceil(storage_size + 1) - 1
 
         self.levels: int = self.storage_size.bit_length()
-        self.leaf_nodes: int = (self.storage_size+1) // 2
-        self.block_size = block_size + constants.ADDRESS_SIZE + constants.NONCE_SIZE + constants.AUTH_TAG_SIZE
+        self.leaf_nodes: int = (self.storage_size + 1) // 2
+        self.block_size = (
+            block_size
+            + constants.ADDRESS_SIZE
+            + constants.NONCE_SIZE
+            + constants.AUTH_TAG_SIZE
+        )
         self.blocks_per_bucket = blocks_per_bucket
 
         # A constant block of all 0s to use as a dummy block
@@ -100,8 +104,7 @@ class Oram:
 
         # Find the leaf node this block is on the path to
         encrypted_blocks = self.send_message(
-            b"R"
-            + old_leaf_node.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
+            b"R" + old_leaf_node.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
         )[1:]
         blocks: List[Tuple[int, bytes]] = self.parse_encrypted_blocks(encrypted_blocks)
         for address, block in blocks:
@@ -123,8 +126,12 @@ class Oram:
         Note that the bytes object is the data from the format above,
         and no longer contains the address
         If the data cannot be parsed, it will throw a ValueError
-        If the address = 256**constants.ADDRESS_SIZE - 1, this is a dummy block, so throw it away"""
-        if len(encrypted_blocks) != self.block_size*self.levels*self.blocks_per_bucket:
+        If the address = 256**constants.ADDRESS_SIZE - 1, this is a dummy block, so throw it away
+        """
+        if (
+            len(encrypted_blocks)
+            != self.block_size * self.levels * self.blocks_per_bucket
+        ):
             raise ValueError(
                 f"encrypted_blocks must be a bytestream"
                 f" with blocks of size {self.block_size}"
@@ -139,6 +146,7 @@ class Oram:
             ]
             block = self.aes.decrypt(nonce, ciphertext_block, associated_data=None)
             address = int.from_bytes(block[: constants.ADDRESS_SIZE], byteorder="big")
+            block = block[constants.ADDRESS_SIZE :]
             if address != 256**constants.ADDRESS_SIZE - 1:
                 blocks.append((address, block))
         return blocks

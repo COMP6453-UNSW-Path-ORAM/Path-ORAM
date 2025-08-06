@@ -1,11 +1,9 @@
 import secrets
-from typing import Callable
-from typing import Optional
-from typing import List, Dict
+from typing import Callable, Dict, List, Optional
 
-from . import constants
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from . import constants
 
 
 # This class is intended to be used in the following simple loop
@@ -44,7 +42,7 @@ class Oram:
         self.levels: int = self.storage_size.bit_length()
 
         # The server starts out full of random encryptions of dummy blocks
-        dummy_address: bytes = (256**constants.ADDRESS_SIZE-1).to_bytes(
+        dummy_address: bytes = (256**constants.ADDRESS_SIZE - 1).to_bytes(
             constants.ADDRESS_SIZE, byteorder="big"
         )
         dummy_block: bytes = b"\0" * block_size
@@ -58,17 +56,20 @@ class Oram:
                 self.tree[i].append(nonce + encrypted_block)
 
     def process_command(self, command: bytes) -> None:
+        #print(command)
         if command[0:1] == b"R":
             self.send_message(
-                b"R" + 
-                self._read_path(int.from_bytes(command[1:], byteorder="big"))
+                b"R" + self._read_path(int.from_bytes(command[1:], byteorder="big"))
             )
         elif command[0:1] == b"W":
             self._process_write_command(command[1:])
             self.send_message(b"W")
         else:
             self.send_message(b"E")
-            raise ValueError("Commands must start with 'R' or 'W'. This command starts with " + str(command[0:1]))
+            raise ValueError(
+                "Commands must start with 'R' or 'W'. This command starts with "
+                + str(command[0:1])
+            )
 
     # Reading a path empties that path, because a read is always followed by a write
     # Which fills the path up again
@@ -101,7 +102,7 @@ class Oram:
         # Which is at position leaf_node+self.storage_size // 2
         # Then go to the parent however many times it takes
         # Which is self.levels - level - 1
-        node_index = (leaf_node + self.storage_size // 2)
+        node_index = leaf_node + self.storage_size // 2
         for _ in range(self.levels - level - 1):
             node_index = (node_index - 1) // 2
         # The client must not write too many blocks to one bucket
