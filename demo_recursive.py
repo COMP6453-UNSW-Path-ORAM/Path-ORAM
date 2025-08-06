@@ -1,14 +1,11 @@
-import os
 import queue
-import sys
 import threading
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from pathoram.client import ADDRESS_SIZE
 from pathoram.client.pathoram_client import ClientOramRecursive
 from pathoram.server.pathoram_server import ServerOram
-
 
 client_message_queue: queue.Queue[bytes] = queue.Queue()
 server_message_queue: queue.Queue[bytes] = queue.Queue()
