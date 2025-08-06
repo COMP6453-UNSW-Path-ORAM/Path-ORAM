@@ -14,13 +14,13 @@ sys.path.append(lib_path)
 from pathoram_client import Oram as ClientOram  #noqa: E402
 from pathoram_server import Oram as ServerOram  #noqa: E402
 
-client_message_queue = queue.Queue()
-server_message_queue = queue.Queue()
+client_message_queue: queue.Queue[bytes] = queue.Queue()
+server_message_queue: queue.Queue[bytes] = queue.Queue()
 
 stop_event = threading.Event()
 
 
-def main():
+def main() -> None:
     key = AESGCM.generate_key(bit_length=256)
     client_oram = ClientOram(2047, send_message_client, key=key)
     server_oram = ServerOram(2047, send_message_server, key=key)

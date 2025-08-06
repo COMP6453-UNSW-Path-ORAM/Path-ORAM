@@ -29,6 +29,7 @@ jobs:
           ruff check .
           mypy libs/pathoram_client/pathoram_client
           mypy libs/pathoram_server/pathoram_server
+          mypy apps/demo.py
 
       - name: Run tests
         run: |
