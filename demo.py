@@ -13,6 +13,7 @@ sys.path.append(lib_path)
 
 from pathoram_client import Oram as ClientOram  # noqa: E402
 from pathoram_server import Oram as ServerOram  # noqa: E402
+from pathoram_client import ADDRESS_SIZE
 
 client_message_queue: queue.Queue[bytes] = queue.Queue()
 server_message_queue: queue.Queue[bytes] = queue.Queue()
@@ -50,14 +51,14 @@ def watch_for_messages_server(server_oram: ServerOram) -> None:
 def send_message_read(addr: int) -> bytes:
     global server_message_queue
     global client_message_queue
-    server_message_queue.put(b"R" + addr.to_bytes(10, byteorder="big"))
+    server_message_queue.put(b"R" + addr.to_bytes(ADDRESS_SIZE, byteorder="big"))
     message = client_message_queue.get()
     return message
 
 def send_message_write(addr: int, message: bytes) -> None:
     global server_message_queue
     global client_message_queue
-    server_message_queue.put(b"W" + addr.to_bytes(10, byteorder="big") + message)
+    server_message_queue.put(b"W" + addr.to_bytes(ADDRESS_SIZE, byteorder="big") + message)
     message = client_message_queue.get()
     # return message
 
