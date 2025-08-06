@@ -6,9 +6,9 @@ import threading
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 current_dir = os.path.dirname(__file__)
-lib_path = os.path.abspath(os.path.join(current_dir, "../libs/pathoram_client"))
+lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_client"))
 sys.path.append(lib_path)
-lib_path = os.path.abspath(os.path.join(current_dir, "../libs/pathoram_server"))
+lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_server"))
 sys.path.append(lib_path)
 
 from pathoram_client import Oram as ClientOram  #noqa: E402
