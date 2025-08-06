@@ -194,7 +194,7 @@ class ClientOram:
                 if (
                     get_bucket(block_leaf_node, i, self.levels)
                     == get_bucket(leaf_node, i, self.levels)
-                    and len(valid_block_addresses) <= self.blocks_per_bucket
+                    and len(valid_block_addresses) < self.blocks_per_bucket
                 ):
                     valid_block_addresses.append(block_address)
             valid_blocks = [
