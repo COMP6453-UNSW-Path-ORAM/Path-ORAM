@@ -1,3 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pathoram"
+version = "0.1.0"
+description = "An implementation of a Path ORAM."
+authors = [{ name = "Max Hamilton", email = "max.alexander.hamilton@gmail.com" }]
+requires-python = ">=3.9"
+dependencies = ["cryptography >=45.0.6"]
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "mypy",
+  "ruff",
+  "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.black]
 line-length = 88
 target-version = ["py39"]
@@ -7,7 +30,7 @@ include = '\.pyi?$'
 profile = "black"
 
 [tool.mypy]
-python_version = 3.9
+python_version = "3.9"
 strict = true
 ignore_missing_imports = true
 

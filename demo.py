@@ -6,16 +6,9 @@ import threading
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
-current_dir = os.path.dirname(__file__)
-lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_client"))
-sys.path.append(lib_path)
-lib_path = os.path.abspath(os.path.join(current_dir, "libs/pathoram_server"))
-sys.path.append(lib_path)
-
-
-from pathoram_client import ADDRESS_SIZE
-from pathoram_client import Oram as ClientOram
-from pathoram_server import Oram as ServerOram
+from pathoram.client import ADDRESS_SIZE
+from pathoram.client.pathoram_client import ClientOram
+from pathoram.server.pathoram_server import ServerOram
 
 
 client_message_queue: queue.Queue[bytes] = queue.Queue()

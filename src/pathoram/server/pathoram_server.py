@@ -106,7 +106,7 @@ class OramPerClient:
         self.tree[node_index].append(block)
 
 
-class Oram:
+class ServerOram:
     def __init__(
         self,
         send_message: Callable[[bytes], None],

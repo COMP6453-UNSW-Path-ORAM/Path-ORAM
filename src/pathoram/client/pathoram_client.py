@@ -8,7 +8,7 @@ from . import constants
 from .bit_util import bit_ceil, get_bucket
 
 
-class Oram:
+class ClientOram:
     """The Oram presents the following interface to its users:
     There is a contiguous array of blocks, each containing a number of bytes
     Each block can be accessed by its address in the array, to be read or written to
@@ -23,7 +23,7 @@ class Oram:
         send_message_write: Callable[[bytes, int, bytes], None],
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
-        position_map: Optional[Union[list[bytes], "Oram"]] = None,
+        position_map: Optional[Union[list[bytes], "ClientOram"]] = None,
         stash: Optional[dict[int, bytes]] = None,
         key: Optional[bytes] = None,
     ):
@@ -63,7 +63,7 @@ class Oram:
         self.dummy_block: bytes = b"\0" * block_size
 
         if position_map is None:
-            self.position_map: Union[list[bytes], Oram] = [
+            self.position_map: Union[list[bytes], ClientOram] = [
                 b"0" * constants.ADDRESS_SIZE for _ in range(self.storage_size)
             ]
         else:
@@ -218,7 +218,7 @@ class Oram:
                 self.stash.pop(address)
 
 
-class OramRecursive:
+class ClientOramRecursive:
     """Recursive variant of Oram with uniform block size at each level of recursive"""
 
     def __init__(
@@ -233,10 +233,10 @@ class OramRecursive:
         stash: Optional[dict[int, bytes]] = None,
         key: Optional[bytes] = None,
     ):
-        self.orams: list[Oram] = []
+        self.orams: list[ClientOram] = []
         for i in range(recursive_depth + 1):
             self.orams.append(
-                Oram(
+                ClientOram(
                     storage_size=storage_size,
                     send_message_init=send_message_init,
                     send_message_read=send_message_read,

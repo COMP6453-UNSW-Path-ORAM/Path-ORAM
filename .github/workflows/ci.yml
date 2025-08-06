@@ -15,23 +15,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install .
-          pip install black mypy ruff pytest cryptography
+          pip install .[dev]
 
       - name: Run linting
         run: |
           black --check .
           ruff check .
-          mypy libs/pathoram_client/pathoram_client
-          mypy libs/pathoram_server/pathoram_server
+          mypy src
           mypy demo.py
+          mypy demo_recursive.py
 
       - name: Run tests
         run: |
-          pytest libs/pathoram_client/pathoram_client_tests
-          pytest libs/pathoram_server/pathoram_server_tests
+          pytest tests/pathoram/client
+          pytest tests/pathoram/server
