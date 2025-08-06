@@ -22,7 +22,7 @@ stop_event = threading.Event()
 
 def main() -> None:
     key = AESGCM.generate_key(bit_length=256)
-    client_oram = ClientOram(2047, send_message_client, key=key)
+    client_oram = ClientOram(2047, send_message_read=send_message_read, send_message_write=send_message_write, key=key)
     server_oram = ServerOram(2047, send_message_server, key=key)
     server_thread = threading.Thread(
         target=watch_for_messages_server, args=(server_oram,)
@@ -47,12 +47,19 @@ def watch_for_messages_server(server_oram: ServerOram) -> None:
             server_oram.process_command(command)
 
 
-def send_message_client(message: bytes) -> bytes:
+def send_message_read(addr: int) -> bytes:
     global server_message_queue
     global client_message_queue
-    server_message_queue.put(message)
+    server_message_queue.put(b"R" + addr.to_bytes(10, byteorder="big"))
     message = client_message_queue.get()
     return message
+
+def send_message_write(addr: int, message: bytes) -> None:
+    global server_message_queue
+    global client_message_queue
+    server_message_queue.put(b"W" + addr.to_bytes(10, byteorder="big") + message)
+    message = client_message_queue.get()
+    # return message
 
 
 def send_message_server(message: bytes) -> None:
