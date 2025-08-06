@@ -1,11 +1,14 @@
 import secrets
-from typing import Callable, Optional, Union, Union
+from typing import Callable, Optional, Union, Union, Union
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from . import constants
 from .bit_util import bit_ceil, get_bucket
 
+
+import pathoram_client.constants as constants
+from pathoram_client.bit_util import bit_ceil, get_bucket
 
 
 class Oram:
@@ -89,9 +92,14 @@ class Oram:
         self._read_block_into_stash(address)
         block = self.stash[address]
         self._write_blocks_from_stash(
+            int.from_bytes(
             int.from_bytes(leaf_node, byteorder="big")
+        , byteorder="big")
         )
         return block
+
+    def __getitem__(self, address: int) -> bytes:
+        return self.read_block(address)
 
     def __getitem__(self, address: int) -> bytes:
         return self.read_block(address)
@@ -102,6 +110,11 @@ class Oram:
         self.stash[address] = block
         self._write_blocks_from_stash(
             int.from_bytes(leaf_node, byteorder="big")
+        )
+
+    def __setitem__(self, address: int, block: bytes) -> None:
+        return 
+            int.from_bytes(self.write_block(address, block, byteorder="big")
         )
 
     def __setitem__(self, address: int, block: bytes) -> None:
