@@ -17,6 +17,3 @@ lint.select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "packages"]
-
-[tool.setuptools.packages.find]
-include = ["libs.pathoram_client*", "libs.pathoram_server*"]
