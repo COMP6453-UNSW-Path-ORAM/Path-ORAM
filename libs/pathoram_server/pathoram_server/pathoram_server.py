@@ -28,9 +28,9 @@ class OramPerClient:
         # The parent of a node with index i is (i-1) // 2
         # The left child of a node with index i is 2*i+1
         # The right child of a node with index i is 2*i+2
-        self.tree: list[list[bytes]] = [[] for _ in range(self.storage_size)]
-
+        #
         self.storage_size: int = storage_size
+        self.tree: list[list[bytes]] = [[] for _ in range(self.storage_size)]
 
         self.aes = AESGCM(key)
 
