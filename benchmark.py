@@ -4,10 +4,11 @@ import time
 import random
 import statistics
 import json
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Any
 from dataclasses import dataclass
 from itertools import product
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from pathoram.client.pathoram_client import ClientOram, ClientOramRecursive
