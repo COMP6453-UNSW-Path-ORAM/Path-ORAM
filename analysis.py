@@ -5,7 +5,6 @@ from matplotlib import pyplot
 def main():
     with open("results.csv") as f:
         df = pd.read_csv(f)
-    df = df[df.error_count == 0]
 
     # memory utilization with default parameters
     # comparison between recursive and non-recursive
@@ -19,17 +18,21 @@ def main():
         & (df.config_block_size == block_size)
         & (df.config_blocks_per_bucket == blocks_per_bucket)
         & (df.config_use_recursive == True)
-    ].any()
+    ]
     default_non_recursive_df = df[
         (df.config_read_write_ratio == read_write_ratio)
         & (df.config_storage_size == storage_size)
         & (df.config_block_size == block_size)
         & (df.config_blocks_per_bucket == blocks_per_bucket)
         & (df.config_use_recursive == False)
-    ].any()
+    ]
 
-    print(default_recursive_df)
-    print(default_non_recursive_df)
+    print(
+        f"recursive client map size: {default_recursive_df.iloc[0].client_position_map_size} bytes"
+    )
+    print(
+        f"non-recursive client map size: {default_non_recursive_df.iloc[0].client_position_map_size} bytes"
+    )
 
 
 if __name__ == "__main__":
