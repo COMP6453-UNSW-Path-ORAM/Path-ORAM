@@ -7,12 +7,11 @@ import pytest
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from pathoram.client import ADDRESS_SIZE
+from pathoram.client.constants import DEFAULT_BLOCK_SIZE
 from pathoram.client.pathoram_client import ClientOram
 from pathoram.server.pathoram_server import ServerOram
 
-# class
 class TestOram:
-    # fixture setup
     def setup(self, storage_size: int):
         self.storage_size = storage_size
 
@@ -87,16 +86,97 @@ def create_send_functions(test_oram: TestOram):
 
     return send_message_read, send_message_write, send_message_init, send_message_server
 
-@pytest.fixture
-def basic_test_oram():
+@pytest.fixture(params=[127, 15, 16383, 100000], ids=["basic", "small", "big", "huge"])
+def oram_instance(request):
+    '''fixture that takes variable sized orams.'''
     oram = TestOram()
-    oram.setup(storage_size=2047)
+    oram.setup(storage_size=request.param)
     yield oram
     oram.teardown()
 
-def test_read_write(basic_test_oram):
-    # data = b"hello world"
-    data = b"abcd" * 16
-    basic_test_oram.client_oram.write_block(0, data)
-    result = basic_test_oram.client_oram.read_block(0)
+@pytest.fixture
+def oram_instance_specific():
+    '''for single size oram use.'''
+    oram = TestOram()
+    oram.setup(storage_size=15)
+    yield oram
+    oram.teardown()
+
+def pad(data: bytes, block_size: int = DEFAULT_BLOCK_SIZE):
+    '''pads any data short of the block_size'''
+    if len(data) > block_size: 
+        return data
+    return data + (DEFAULT_BLOCK_SIZE - len(data))*b'\x00'
+
+def test_read_write(oram_instance):
+    '''test basic single read and write case.'''
+    data = pad(b"abcd")
+    oram_instance.client_oram.write_block(0, data)
+    result = oram_instance.client_oram.read_block(0)
     assert result == data
+
+def test_overwrite(oram_instance):
+    '''test second write overwrites content.'''
+    data = pad(b"aaaaaaa")
+    data2 = pad(b"bbb")
+    oram_instance.client_oram.write_block(0, data)
+    oram_instance.client_oram.write_block(0, data2)
+    result = oram_instance.client_oram.read_block(0)
+    assert result == data2
+
+def test_multi_read(oram_instance):
+    '''test multiple reads should not change data.'''
+    data = pad(b"aaaaaaa")
+    oram_instance.client_oram.write_block(0, data)
+    result = oram_instance.client_oram.read_block(0)
+    result2 = oram_instance.client_oram.read_block(0)
+    result3 = oram_instance.client_oram.read_block(0)
+    assert result == data
+    assert result2 == data
+    assert result3 == data
+
+def test_client_read_posmap(oram_instance):
+    '''
+    test leaf node for block is changed after every access.
+    exposes client-side position map for testing.
+    '''
+    data = pad(b"aaaaaaa")
+    oram_instance.client_oram.write_block(0, data)
+    init_leaf = int.from_bytes(oram_instance.client_oram.position_map[0], byteorder="big")
+    oram_instance.client_oram.read_block(0)
+    mid_leaf = int.from_bytes(oram_instance.client_oram.position_map[0], byteorder="big")
+    assert init_leaf != mid_leaf
+    result = oram_instance.client_oram.read_block(0)
+    res_leaf = int.from_bytes(oram_instance.client_oram.position_map[0], byteorder="big")
+    assert mid_leaf != res_leaf
+    assert data == result
+
+def test_multi_ops(oram_instance_specific):
+    '''test handling of multiple read and write operations.'''
+    data = pad(b"aaaaaaa")
+    data2 = pad(b"hello world")
+    data3 = pad(b"b")
+    data4 = pad(b"c")
+    data5 = pad(b"d")
+    oram_instance_specific.client_oram.write_block(0, data)
+    oram_instance_specific.client_oram.write_block(1, data2)
+    result = oram_instance_specific.client_oram.read_block(0)
+    oram_instance_specific.client_oram.write_block(5, data3)
+    result2 = oram_instance_specific.client_oram.read_block(1)
+    result3 = oram_instance_specific.client_oram.read_block(5)
+    oram_instance_specific.client_oram.write_block(7, data4)
+    oram_instance_specific.client_oram.write_block(0, data5)
+    result4 = oram_instance_specific.client_oram.read_block(0)
+    result5 = oram_instance_specific.client_oram.read_block(7)
+    assert data == result
+    assert data2 == result2
+    assert data3 == result3
+    assert data5 == result4
+    assert data4 == result5
+
+def test_nonexistent_read(oram_instance_specific):
+    '''test that reading blocks without writing anything should 
+       not return any actual data, instead throw error.'''
+    with pytest.raises(KeyError): 
+        for i in range(15):
+            oram_instance_specific.client_oram.read_block(i)
