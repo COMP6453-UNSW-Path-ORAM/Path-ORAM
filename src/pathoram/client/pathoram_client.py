@@ -1,9 +1,9 @@
 import secrets
 from typing import Callable, Optional, Union
 from uuid import uuid4
-from pympler import asizeof
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from pympler import asizeof
 
 from . import constants
 from .bit_util import bit_ceil, get_bucket

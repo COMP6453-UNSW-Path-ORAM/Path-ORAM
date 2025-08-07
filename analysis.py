@@ -2,7 +2,7 @@ import pandas as pd
 
 
 def main():
-    with open("results.csv", "r") as f:
+    with open("results.csv") as f:
         df = pd.read_csv(f)
     df = df[df["error_count"] == 0]
     print(df)

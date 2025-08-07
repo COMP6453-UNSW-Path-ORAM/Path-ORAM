@@ -1,20 +1,19 @@
 import queue
-import threading
-import time
 import random
 import statistics
-from typing import Dict, List, Any
+import threading
+import time
 from dataclasses import dataclass
 from itertools import product
+
 import pandas as pd
-from dataclasses import asdict
 
 # import matplotlib.pyplot as plt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from pathoram.client import ADDRESS_SIZE
 from pathoram.client.pathoram_client import ClientOram, ClientOramRecursive
 from pathoram.server.pathoram_server import ServerOram
-from pathoram.client import ADDRESS_SIZE
 
 
 @dataclass
