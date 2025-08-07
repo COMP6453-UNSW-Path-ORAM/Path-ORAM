@@ -12,7 +12,8 @@ from pathoram.server.pathoram_server import ServerOram
 
 # class
 class TestOram:
-    def __init__(self, storage_size: int = 2047):
+    # fixture setup
+    def setup(self, storage_size: int):
         self.storage_size = storage_size
 
         self.client_message_queue: queue.Queue[bytes] = queue.Queue()
@@ -25,8 +26,6 @@ class TestOram:
         self.stop_event = threading.Event()
         self.server_thread: Optional[threading.Thread] = None
 
-    # fixture setup
-    def setup(self):
         self.key = AESGCM.generate_key(bit_length=256)
         send_message_read, send_message_write, send_message_init, send_message_server = create_send_functions(self)
 
@@ -90,8 +89,8 @@ def create_send_functions(test_oram: TestOram):
 
 @pytest.fixture
 def basic_test_oram():
-    oram = TestOram(storage_size=2047)
-    oram.setup()
+    oram = TestOram()
+    oram.setup(storage_size=2047)
     yield oram
     oram.teardown()
 
