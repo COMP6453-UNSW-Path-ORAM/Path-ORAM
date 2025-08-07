@@ -238,9 +238,10 @@ class Benchmarker:
 
     def run_benchmark_suite(self):
         configs = []
-        num_operations = 1000
+        num_operations = 100
 
-        read_write_ratios = [0.3, 0.5, 0.7]
+        read_write_ratios = [0.5]
+        # read_write_ratios = [0.1, 0.5, 0.9]
 
         storage_sizes = [2**s - 1 for s in range(7, 12)]
         block_sizes = [2**s for s in range(5, 9)]
@@ -266,7 +267,8 @@ class Benchmarker:
             )
 
         # recursive
-        recursive_depths = [1, 2, 3, 4]  # for recursive client only
+        recursive_depths = [1]  # for recursive client only
+        # recursive_depths = [1, 2, 3, 4]  # for recursive client only
         for storage, block, bucket, depth, ratio in product(
             storage_sizes,
             block_sizes,
@@ -285,8 +287,6 @@ class Benchmarker:
                     read_write_ratio=ratio,
                 )
             )
-
-        configs = configs[:5]
 
         print(f"Running {len(configs)} benchmark configurations...")
 
