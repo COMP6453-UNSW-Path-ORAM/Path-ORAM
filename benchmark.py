@@ -50,7 +50,7 @@ class Benchmarker:
         self.results = pd.DataFrame(columns=columns)
 
     def setup_communication(self) -> tuple:
-        """Setup communication queues between client and server separately for each benchamrk"""
+        """Setup communication queues between client and server separately"""
         client_message_queue: queue.Queue[bytes] = queue.Queue()
         server_message_queue: queue.Queue[bytes] = queue.Queue()
         stop_event = threading.Event()
@@ -108,7 +108,9 @@ class Benchmarker:
 
     def run_benchmark(self, config: Configuration):
         print(
-            f"Running benchmark: storage={config.storage_size}, block={config.block_size}, bucket={config.blocks_per_bucket},read/write ratio={config.read_write_ratio}"
+            f"Running benchmark: storage={config.storage_size}, "
+            f"block={config.block_size}, bucket={config.blocks_per_bucket}, "
+            f"read/write ratio={config.read_write_ratio}"
         )
         print(
             f"recursive={config.use_recursive},recurcive depth={config.recursive_depth}"
