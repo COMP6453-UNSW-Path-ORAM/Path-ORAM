@@ -26,7 +26,8 @@ jobs:
         run: |
           black --check .
           ruff check .
-          mypy .
+          mypy src
+          mypy tests
 
       - name: Run tests
         run: |
