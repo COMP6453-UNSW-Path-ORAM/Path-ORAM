@@ -11,7 +11,7 @@ def get_bit(x: int, i: int) -> int:
 
 
 def get_bucket(x: int, level: int, num_levels: int) -> int:
-    """implementation of $\mathcal P(x, \ell)$ from the paper
+    """implementation of $\\mathcal P(x, \\ell)$ from the paper
     finds the bucket at level l along the path P(x)
 
     if levels are labelled l = 0, 1, ..., num_levels-1

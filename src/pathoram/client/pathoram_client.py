@@ -119,10 +119,6 @@ class ClientOram:
             constants.ADDRESS_SIZE, byteorder="big"
         )
 
-        # If the block is in the stash already, leave it be
-        if address in self.stash:
-            return
-
         # Find the leaf node this block is on the path to
         encrypted_blocks = self.send_message_read(self.client_id, old_leaf_node)[1:]
         blocks: list[tuple[int, bytes]] = self.parse_encrypted_blocks(encrypted_blocks)
