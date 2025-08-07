@@ -6,6 +6,8 @@ import statistics
 from typing import Dict, List, Any
 from dataclasses import dataclass
 from itertools import product
+import pandas as pd
+from dataclasses import asdict
 
 # import matplotlib.pyplot as plt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -26,25 +28,29 @@ class Configuration:
     read_write_ratio: float  # 0.0 = all writes, 1.0 = all reads
 
 
-@dataclass
-class Result:
-    config: Configuration
-    total_time: float
-    avg_read_time: float
-    avg_write_time: float
-    throughput: float  # operations per second
-    memory_usage: int
-    stash_overflow_count: int
-    error_count: int
-
-
 class Benchmarker:
     """Runs a grid search for finding optimal parameter combination"""
 
-    def __init__(self):
-        self.results: List[Result] = []
+    def __init__(self) -> None:
+        columns = [
+            "config_storage_size",
+            "config_block_size",
+            "config_blocks_per_bucket",
+            "config_recursive_depth",
+            "config_use_recursive",
+            "config_num_operations",
+            "config_read_write_ratio",
+            "total_time",
+            "avg_read_time",
+            "avg_write_time",
+            "throughput",
+            "client_position_map_size",
+            "stash_overflow_count",
+            "error_count",
+        ]
+        self.results = pd.DataFrame(columns=columns)
 
-    def setup_communication(self):
+    def setup_communication(self) -> tuple:
         """Setup communication queues between client and server separately for each benchamrk"""
         client_message_queue: queue.Queue[bytes] = queue.Queue()
         server_message_queue: queue.Queue[bytes] = queue.Queue()
@@ -201,20 +207,24 @@ class Benchmarker:
 
             memory_usage = client_oram.get_position_map_size()
 
-            result = Result(
-                config=config,
-                total_time=total_time,
-                avg_read_time=avg_read_time,
-                avg_write_time=avg_write_time,
-                throughput=throughput,
-                memory_usage=memory_usage,
-                stash_overflow_count=stash_overflow_count,
-                error_count=error_count,
-            )
-            self.results.append(result)
-
+            result = {
+                "config_storage_size": config.storage_size,
+                "config_block_size": config.block_size,
+                "config_blocks_per_bucket": config.blocks_per_bucket,
+                "config_recursive_depth": config.recursive_depth,
+                "config_use_recursive": config.use_recursive,
+                "config_num_operations": config.num_operations,
+                "config_read_write_ratio": config.read_write_ratio,
+                "total_time": total_time,
+                "avg_read_time": avg_read_time,
+                "avg_write_time": avg_write_time,
+                "throughput": throughput,
+                "client_position_map_size": memory_usage,
+                "stash_overflow_count": stash_overflow_count,
+                "error_count": error_count,
+            }
+            self.results.loc[len(self.results)] = result
             print(result)
-
             return result
 
         except Exception as e:
@@ -225,10 +235,10 @@ class Benchmarker:
             server_message_queue.put(b"")
             server_thread.join(timeout=1)
 
-    def run_benchmark_suite(self) -> List[Result]:
+    def run_benchmark_suite(self):
         configs = []
-
         num_operations = 1000
+
         read_write_ratios = [0.3, 0.5, 0.7]
 
         storage_sizes = [2**s - 1 for s in range(7, 12)]
@@ -253,7 +263,6 @@ class Benchmarker:
                     read_write_ratio=ratio,
                 )
             )
-            pass
 
         # recursive
         recursive_depths = [1, 2, 3, 4]  # for recursive client only
@@ -275,8 +284,8 @@ class Benchmarker:
                     read_write_ratio=ratio,
                 )
             )
-            pass
-        configs = configs[:1]
+
+        configs = configs[:5]
 
         print(f"Running {len(configs)} benchmark configurations...")
 
@@ -289,21 +298,11 @@ class Benchmarker:
 
         return self.results
 
-    def analyze_results(self) -> Dict[str, Any]:
-        return {}
-
-    def generate_report(self, filename: str = "benchmark_report.csv"):
-        analysis = self.analyze_results()
-        return analysis
-
 
 def main():
     benchmarker = Benchmarker()
     results = benchmarker.run_benchmark_suite()
-
-    print(f"\nCompleted benchmarks for {len(results)} configs")
-
-    analysis = benchmarker.generate_report()
+    results.to_csv("results.csv", index=False)
 
 
 if __name__ == "__main__":
