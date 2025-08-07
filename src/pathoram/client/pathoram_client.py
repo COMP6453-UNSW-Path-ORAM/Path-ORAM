@@ -1,6 +1,7 @@
 import secrets
 from typing import Callable, Optional, Union
 from uuid import uuid4
+from pympler import asizeof
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -96,6 +97,9 @@ class ClientOram:
         block = self.stash[address]
         self._write_blocks_from_stash(leaf_node)
         return block
+
+    def get_position_map_size(self):
+        return asizeof.asizeof(self.position_map)
 
     def __getitem__(self, address: int) -> bytes:
         return self.read_block(address)
@@ -258,3 +262,7 @@ class ClientOramRecursive:
 
     def __setitem__(self, address: int, block: bytes) -> None:
         return self.write_block(address, block)
+
+    def get_position_map_size(self):
+        sizes = [asizeof.asizeof(oram.position_map) for oram in self.orams]
+        return sum(sizes)

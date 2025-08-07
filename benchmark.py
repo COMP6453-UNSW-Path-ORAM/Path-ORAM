@@ -3,7 +3,6 @@ import threading
 import time
 import random
 import statistics
-import json
 from typing import Dict, List, Any
 from dataclasses import dataclass
 from itertools import product
@@ -200,10 +199,7 @@ class Benchmarker:
             avg_write_time = statistics.mean(write_times) if write_times else 0
             throughput = config.num_operations / total_time
 
-            # naive calculation, not counting overhead
-            memory_usage = (
-                config.storage_size * config.blocks_per_bucket * (config.block_size)
-            )
+            memory_usage = client_oram.get_position_map_size()
 
             result = Result(
                 config=config,
@@ -232,12 +228,7 @@ class Benchmarker:
     def run_benchmark_suite(self) -> List[Result]:
         configs = []
 
-        # read_write_ratios = [0.5]
-
-        # storage_sizes = [2047]
-        # block_sizes = [64]
-        # blocks_per_bucket = [4]
-
+        num_operations = 1000
         read_write_ratios = [0.3, 0.5, 0.7]
 
         storage_sizes = [2**s - 1 for s in range(7, 12)]
@@ -258,13 +249,13 @@ class Benchmarker:
                     blocks_per_bucket=bucket,
                     recursive_depth=0,
                     use_recursive=False,
-                    num_operations=storage * bucket,
+                    num_operations=num_operations,
                     read_write_ratio=ratio,
                 )
             )
+            pass
 
         # recursive
-        # recursive_depths = [1]  # for recursive client only
         recursive_depths = [1, 2, 3, 4]  # for recursive client only
         for storage, block, bucket, depth, ratio in product(
             storage_sizes,
@@ -280,10 +271,12 @@ class Benchmarker:
                     blocks_per_bucket=bucket,
                     recursive_depth=depth,
                     use_recursive=True,
-                    num_operations=storage * bucket,
+                    num_operations=num_operations,
                     read_write_ratio=ratio,
                 )
             )
+            pass
+        configs = configs[:1]
 
         print(f"Running {len(configs)} benchmark configurations...")
 
