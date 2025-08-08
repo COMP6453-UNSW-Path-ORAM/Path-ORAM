@@ -1,8 +1,10 @@
+'''
+Sets up client and server for testing.
+'''
+
 import queue
-import random
 import threading
 from typing import Optional
-import pytest
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -12,12 +14,13 @@ from pathoram.client.pathoram_client import ClientOram
 from pathoram.server.pathoram_server import ServerOram
 
 class TestOram:
+    '''contains the required setup and teardown functions for pytest fixtures.'''
     def setup(self, storage_size: int):
         self.storage_size = storage_size
 
         self.client_message_queue: queue.Queue[bytes] = queue.Queue()
         self.server_message_queue: queue.Queue[bytes] = queue.Queue()
-        
+
         self.key: Optional[bytes] = None
         self.client_oram: Optional[ClientOram] = None
         self.server_oram: Optional[ServerOram] = None
@@ -26,7 +29,10 @@ class TestOram:
         self.server_thread: Optional[threading.Thread] = None
 
         self.key = AESGCM.generate_key(bit_length=256)
-        send_message_read, send_message_write, send_message_init, send_message_server = create_send_functions(self)
+        [ send_message_read, 
+         send_message_write, 
+         send_message_init, 
+         send_message_server ] = create_send_functions(self)
 
         # start server first!
         self.server_oram = ServerOram(send_message_server, key=self.key)
@@ -42,7 +48,7 @@ class TestOram:
             send_message_init=send_message_init,
             key=self.key,
         )
-        
+
     def teardown(self):
         self.stop_event.set()
         self.server_message_queue.put(b"")
@@ -80,7 +86,7 @@ def create_send_functions(test_oram: TestOram):
         )
         message = test_oram.client_message_queue.get()
         # return message
-    
+
     def send_message_server(message: bytes) -> None:
         test_oram.client_message_queue.put(message)
 
@@ -88,6 +94,6 @@ def create_send_functions(test_oram: TestOram):
 
 def pad(data: bytes, block_size: int = DEFAULT_BLOCK_SIZE):
     '''pads any data short of the block_size'''
-    if len(data) > block_size: 
+    if len(data) > block_size:
         return data
     return data + (DEFAULT_BLOCK_SIZE - len(data))*b'\x00'
