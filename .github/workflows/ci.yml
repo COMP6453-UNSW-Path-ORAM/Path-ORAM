@@ -27,10 +27,8 @@ jobs:
           black --check .
           ruff check .
           mypy src
-          mypy demo.py
-          mypy demo_recursive.py
+          mypy tests
 
       - name: Run tests
         run: |
-          pytest tests/pathoram/client
-          pytest tests/pathoram/server
+          pytest tests
