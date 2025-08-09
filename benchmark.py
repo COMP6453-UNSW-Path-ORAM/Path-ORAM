@@ -21,7 +21,6 @@ class Configuration:
     storage_size: int
     block_size: int
     blocks_per_bucket: int
-    recursive_depth: int
     use_recursive: bool
     num_operations: int
     read_write_ratio: float  # 0.0 = all writes, 1.0 = all reads
@@ -35,7 +34,6 @@ class Benchmarker:
             "config_storage_size",
             "config_block_size",
             "config_blocks_per_bucket",
-            "config_recursive_depth",
             "config_use_recursive",
             "config_num_operations",
             "config_read_write_ratio",
@@ -112,9 +110,7 @@ class Benchmarker:
             f"block={config.block_size}, bucket={config.blocks_per_bucket}, "
             f"read/write ratio={config.read_write_ratio}"
         )
-        print(
-            f"recursive={config.use_recursive},recurcive depth={config.recursive_depth}"
-        )
+        print(f"recursive={config.use_recursive}")
 
         (
             _,  # client message queue not used
@@ -143,7 +139,6 @@ class Benchmarker:
                 send_message_read=send_message_read,
                 send_message_write=send_message_write,
                 send_message_init=send_message_init,
-                recursive_depth=config.recursive_depth,
                 block_size=config.block_size,
                 blocks_per_bucket=config.blocks_per_bucket,
                 key=key,
@@ -212,7 +207,6 @@ class Benchmarker:
                 "config_storage_size": config.storage_size,
                 "config_block_size": config.block_size,
                 "config_blocks_per_bucket": config.blocks_per_bucket,
-                "config_recursive_depth": config.recursive_depth,
                 "config_use_recursive": config.use_recursive,
                 "config_num_operations": config.num_operations,
                 "config_read_write_ratio": config.read_write_ratio,
@@ -246,43 +240,22 @@ class Benchmarker:
         storage_sizes = [2**s - 1 for s in range(7, 12)]
         block_sizes = [2**s for s in range(5, 9)]
         blocks_per_bucket = [2, 4, 6, 8]
+        recursive_options = [True, False]
 
         # non-resurcive
-        for storage, block, bucket, ratio in product(
+        for storage, block, bucket, ratio, recurse in product(
             storage_sizes,
             block_sizes,
             blocks_per_bucket,
             read_write_ratios,
+            recursive_options,
         ):
             configs.append(
                 Configuration(
                     storage_size=storage,
                     block_size=block,
                     blocks_per_bucket=bucket,
-                    recursive_depth=0,
-                    use_recursive=False,
-                    num_operations=num_operations,
-                    read_write_ratio=ratio,
-                )
-            )
-
-        # recursive
-        recursive_depths = [1]  # for recursive client only
-        # recursive_depths = [1, 2, 3, 4]  # for recursive client only
-        for storage, block, bucket, depth, ratio in product(
-            storage_sizes,
-            block_sizes,
-            blocks_per_bucket,
-            recursive_depths,
-            read_write_ratios,
-        ):
-            configs.append(
-                Configuration(
-                    storage_size=storage,
-                    block_size=block,
-                    blocks_per_bucket=bucket,
-                    recursive_depth=depth,
-                    use_recursive=True,
+                    use_recursive=recurse,
                     num_operations=num_operations,
                     read_write_ratio=ratio,
                 )
