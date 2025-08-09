@@ -165,7 +165,15 @@ class ClientOram:
             ciphertext_block = encrypted_blocks[
                 i + constants.NONCE_SIZE : i + self.block_size
             ]
-            block = self.aes.decrypt(nonce, ciphertext_block, associated_data=None)
+            try:
+                block = self.aes.decrypt(nonce, ciphertext_block, associated_data=None)
+            except Exception:
+                dummy_address: bytes = (256**constants.ADDRESS_SIZE - 1).to_bytes(
+                    constants.ADDRESS_SIZE, byteorder="big"
+                )
+                dummy_block: bytes = b"\0" * self.block_size
+                block = dummy_address + dummy_block
+                
             address = int.from_bytes(block[: constants.ADDRESS_SIZE], byteorder="big")
             block = block[constants.ADDRESS_SIZE :]
             if address != 256**constants.ADDRESS_SIZE - 1:
