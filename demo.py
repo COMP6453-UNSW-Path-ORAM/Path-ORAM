@@ -42,7 +42,7 @@ def main() -> None:
     for i in range(2047):
         client_oram.write_block(i, A[i])
     for _ in range(1000):
-        i = random.randint(0, 2047)
+        i = random.randint(0, 2046)
         if random.choice("RW") == "R":
             assert A[i] == client_oram.read_block(i)
         else:
