@@ -8,6 +8,32 @@ from . import constants
 from .bit_util import bit_ceil, get_bucket
 
 
+class PositionMap:
+    def __init__(self, storage_size: int, block_size: int):
+        leaf_nodes = (storage_size + 1) // 2
+        self.position_map: Union[list[bytes], "ClientOram"] = []
+        self.num_address_per_block = block_size // constants.ADDRESS_SIZE
+        for _ in range(storage_size):
+            block = b"".join(secrets.randbelow(leaf_nodes).to_bytes(constants.ADDRESS_SIZE, byteorder="big") for _ in range(self.num_address_per_block))
+            while len(block)+1 <= block_size:
+                block += b"\0"
+            self.position_map.append(block)
+
+    @classmethod
+    def from_oram(self, oram: "ClientOram", num_address_per_block):
+        self.position_map = oram
+        self.num_address_per_block = num_address_per_block
+
+    def __getitem__(self, address: int) -> int:
+        block = self.position_map[address//self.num_address_per_block]
+        i = address % self.num_address_per_block
+        return int.from_bytes(block[constants.ADDRESS_SIZE*i: constants.ADDRESS_SIZE*(i+1)])
+    
+    def __setitem__(self, address: int, data: int) -> None:
+        block = self.position_map[address//self.num_address_per_block]
+        i = address % self.num_address_per_block
+        block = block[:constants.ADDRESS_SIZE*i] + data.to_bytes(constants.ADDRESS_SIZE, byteorder="big") + block[:constants.ADDRESS_SIZE*(i+1)]
+
 class ClientOram:
     """The Oram presents the following interface to its users:
     There is a contiguous array of blocks, each containing a number of bytes
@@ -23,7 +49,7 @@ class ClientOram:
         send_message_write: Callable[[bytes, int, bytes], None],
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
-        position_map: Optional[Union[list[bytes], "ClientOram"]] = None,
+        position_map: Optional[PositionMap] = None,
         stash: Optional[dict[int, bytes]] = None,
         key: Optional[bytes] = None,
     ):
@@ -62,16 +88,7 @@ class ClientOram:
         # A constant block of all 0s to use as a dummy block
         self.dummy_block: bytes = b"\0" * block_size
 
-        if position_map is None:
-            self.position_map: Union[list[bytes], ClientOram] = [
-                b"0" * constants.ADDRESS_SIZE for _ in range(self.storage_size)
-            ]
-        else:
-            self.position_map = position_map
-        for i in range(self.storage_size):
-            self.position_map[i] = secrets.randbelow(self.leaf_nodes).to_bytes(
-                constants.ADDRESS_SIZE, byteorder="big"
-            )
+        self.position_map = position_map or PositionMap(storage_size, block_size)
 
         if stash is None:
             self.stash: dict[int, bytes] = {}
@@ -91,7 +108,7 @@ class ClientOram:
         )
 
     def read_block(self, address: int) -> bytes:
-        leaf_node = int.from_bytes(self.position_map[address], byteorder="big")
+        leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         block = self.stash[address]
         self._write_blocks_from_stash(leaf_node)
@@ -101,7 +118,7 @@ class ClientOram:
         return self.read_block(address)
 
     def write_block(self, address: int, block: bytes) -> None:
-        leaf_node = int.from_bytes(self.position_map[address], byteorder="big")
+        leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         self.stash[address] = block
         self._write_blocks_from_stash(leaf_node)
@@ -114,10 +131,8 @@ class ClientOram:
             raise IndexError("address out of range")
 
         # Remap block to a new leaf node
-        old_leaf_node = int.from_bytes(self.position_map[address], byteorder="big")
-        self.position_map[address] = secrets.randbelow(self.leaf_nodes).to_bytes(
-            constants.ADDRESS_SIZE, byteorder="big"
-        )
+        old_leaf_node = self.position_map[address]
+        self.position_map[address] = secrets.randbelow(self.leaf_nodes)
 
         # If the block is in the stash already, leave it be
         if address in self.stash:
@@ -188,9 +203,7 @@ class ClientOram:
         for i in range(self.levels - 1, -1, -1):
             valid_block_addresses: list[int] = []
             for block_address in self.stash.keys():
-                block_leaf_node = int.from_bytes(
-                    self.position_map[block_address], byteorder="big"
-                )
+                block_leaf_node = self.position_map[block_address]
                 if (
                     get_bucket(block_leaf_node, i, self.levels)
                     == get_bucket(leaf_node, i, self.levels)
@@ -229,23 +242,33 @@ class ClientOramRecursive:
         send_message_write: Callable[[bytes, int, bytes], None],
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
-        recursive_depth: int = constants.DEFAULT_RECURSIVE_DEPTH,
         stash: Optional[dict[int, bytes]] = None,
         key: Optional[bytes] = None,
     ):
-        self.orams: list[ClientOram] = []
-        for i in range(recursive_depth + 1):
+        # storage_sizes is a list of length at most recursive_depth+1
+        # for i = 0, 1, ..., recursive_depth-1, Oram i has storage_size=storage_size[i]
+        # lastly storage_size[recursive_depth] is the length of the position list
+        # stored on client side
+        num_address_per_block = block_size // constants.ADDRESS_SIZE
+        storage_sizes = []
+        size = storage_size
+        while size > 1:
+            storage_sizes.append(size)
+            size = (size + num_address_per_block - 1) // num_address_per_block
+        storage_sizes = storage_sizes[::-1]
+
+        self.position_map = PositionMap(1, block_size)
+        self.orams: list[Union[list[bytes], ClientOram]] = []
+        for storage_size in storage_sizes:
             self.orams.append(
                 ClientOram(
                     storage_size=storage_size,
                     send_message_init=send_message_init,
                     send_message_read=send_message_read,
                     send_message_write=send_message_write,
-                    block_size=(
-                        block_size if i == recursive_depth else constants.ADDRESS_SIZE
-                    ),
+                    block_size=block_size,
                     blocks_per_bucket=blocks_per_bucket,
-                    position_map=self.orams[-1] if self.orams else None,
+                    position_map=PositionMap.from_oram(self.orams[-1], num_address_per_block) if self.orams else self.position_map,
                     stash=stash,
                     key=key,
                 )
