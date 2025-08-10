@@ -1,16 +1,17 @@
 import secrets
-from typing import Callable, Optional
+from typing import Callable
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from . import constants
 
 
-# This class is intended to be used in the following simple loop
-# while True:
-#     command = wait_for_command()
-#     Oram.process_command(command)
-class Oram:
+class ServerOramPerClient:
+    """This class is intended to be used in the following simple loop
+    while True:
+        command = wait_for_command()
+        Oram.process_command(command)
+    """
 
     def __init__(
         self,
@@ -19,8 +20,6 @@ class Oram:
         key: bytes,
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
-        position_map: Optional[list[int]] = None,
-        stash: Optional[dict[int, bytes]] = None,
     ):
         # The binary tree is an array in memory
         # Such that self.tree[0] is the root node
@@ -29,9 +28,9 @@ class Oram:
         # The parent of a node with index i is (i-1) // 2
         # The left child of a node with index i is 2*i+1
         # The right child of a node with index i is 2*i+2
-        self.tree: list[list[bytes]] = []
-
+        #
         self.storage_size: int = storage_size
+        self.tree: list[list[bytes]] = [[] for _ in range(self.storage_size)]
 
         self.aes = AESGCM(key)
 
@@ -47,7 +46,6 @@ class Oram:
         )
         dummy_block: bytes = b"\0" * block_size
         for i in range(self.storage_size):
-            self.tree.append([])
             for _ in range(self.blocks_per_bucket):
                 nonce: bytes = secrets.token_bytes(12)
                 encrypted_block = self.aes.encrypt(
@@ -62,7 +60,7 @@ class Oram:
             )
         elif command[0:1] == b"W":
             self._process_write_command(command[1:])
-            self.send_message(b"W")
+            self.send_message(b"ok")
         else:
             self.send_message(b"E")
             raise ValueError(
@@ -78,10 +76,8 @@ class Oram:
         leaf_node += self.storage_size // 2
         blocks: list[bytes] = []
         current_node = leaf_node
-        for i in range(self.levels - 1, -1, -1):
-            bucket = self.tree[current_node]
-            for block in bucket:
-                blocks.append(block)
+        for _ in range(self.levels):
+            blocks += self.tree[current_node]
             self.tree[current_node] = []
             # Get the parent of the current node
             current_node = (current_node - 1) // 2
@@ -108,3 +104,40 @@ class Oram:
         if len(self.tree[node_index]) >= self.blocks_per_bucket:
             raise IndexError("Bucket overflowed")
         self.tree[node_index].append(block)
+
+
+class ServerOram:
+    def __init__(
+        self,
+        send_message: Callable[[bytes], None],
+        key: bytes,
+    ):
+        self.send_message = send_message
+        self.key = key
+        self.storagePerClient: dict[bytes, ServerOramPerClient] = {}
+
+    def process_command(self, command: bytes) -> None:
+        client_id, command = command[:16], command[16:]
+        if command[0:1] == b"I":
+            command = command[1:]
+            storage_size = int.from_bytes(
+                command[: constants.ADDRESS_SIZE], byteorder="big"
+            )
+            block_size = int.from_bytes(
+                command[constants.ADDRESS_SIZE : constants.ADDRESS_SIZE * 2],
+                byteorder="big",
+            )
+            blocks_per_bucket = int.from_bytes(
+                command[constants.ADDRESS_SIZE * 2 : constants.ADDRESS_SIZE * 3],
+                byteorder="big",
+            )
+            self.storagePerClient[client_id] = ServerOramPerClient(
+                storage_size=storage_size,
+                send_message=self.send_message,
+                key=self.key,
+                block_size=block_size,
+                blocks_per_bucket=blocks_per_bucket,
+            )
+            self.send_message(b"ok")
+        else:
+            self.storagePerClient[client_id].process_command(command)

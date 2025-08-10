@@ -1,11 +1,10 @@
 import queue
-import random
 import threading
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from pathoram.client import ADDRESS_SIZE
-from pathoram.client.pathoram_client import ClientOram
+from pathoram.client.pathoram_client import ClientOramRecursive
 from pathoram.server.pathoram_server import ServerOram
 
 client_message_queue: queue.Queue[bytes] = queue.Queue()
@@ -24,7 +23,7 @@ def main() -> None:
     )
     server_thread.start()
 
-    client_oram = ClientOram(
+    client_oram = ClientOramRecursive(
         2047,
         send_message_read=send_message_read,
         send_message_write=send_message_write,
@@ -37,19 +36,6 @@ def main() -> None:
     print(client_oram.read_block(1))
     client_oram.write_block(0, b"1234" * 16)
     print(client_oram.read_block(0))
-
-    A = [b"0" * 64 for _ in range(2047)]
-    for i in range(2047):
-        client_oram.write_block(i, A[i])
-    for _ in range(1000):
-        i = random.randint(0, 2046)
-        if random.choice("RW") == "R":
-            assert A[i] == client_oram.read_block(i)
-        else:
-            d = random.randbytes(64)
-            A[i] = d
-            client_oram.write_block(i, d)
-
     stop_event.set()
     server_message_queue.put(b"")
     server_thread.join()

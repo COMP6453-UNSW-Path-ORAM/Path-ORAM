@@ -1,6 +1,6 @@
 import unittest
 
-from pathoram_client import bit_util
+from pathoram.client import bit_util
 
 
 class TestBitCeil(unittest.TestCase):

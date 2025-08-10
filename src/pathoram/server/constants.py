@@ -7,9 +7,6 @@ ADDRESS_SIZE = 8
 # bytes
 LEVEL_SIZE = 8
 
-# bytes
-LENGTH_PREFIX_SIZE = 8
-
 # recommended aes nonce size
 # bytes
 NONCE_SIZE = 12
@@ -19,3 +16,6 @@ NONCE_SIZE = 12
 AUTH_TAG_SIZE = 16
 
 DEFAULT_BLOCKS_PER_BUCKET = 4
+
+# bytes
+CLIENT_ID_SIZE = 16
