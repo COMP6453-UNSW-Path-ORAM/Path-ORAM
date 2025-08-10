@@ -1,3 +1,4 @@
+import os
 import queue
 import random
 import statistics
@@ -295,7 +296,8 @@ class Benchmarker:
 def main():
     benchmarker = Benchmarker()
     results = benchmarker.run_benchmark_suite()
-    results.to_csv("results.csv", index=False)
+    write_header = not os.path.exists("results.csv")
+    results.to_csv("results.csv", mode="a", header=write_header, index=False)
 
 
 if __name__ == "__main__":
