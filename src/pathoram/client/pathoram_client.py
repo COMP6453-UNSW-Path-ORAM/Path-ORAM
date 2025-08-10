@@ -128,8 +128,8 @@ class ClientOram:
         self._write_blocks_from_stash(leaf_node)
         return block
 
-    def get_position_map_size(self) -> int:
-        return asizeof.asizeof(self.position_map)
+    def get_client_size(self) -> int:
+        return asizeof.asizeof(self)
 
     def __getitem__(self, address: int) -> bytes:
         return self.read_block(address)
@@ -303,6 +303,5 @@ class ClientOramRecursive:
     def __setitem__(self, address: int, block: bytes) -> None:
         return self.write_block(address, block)
 
-    def get_position_map_size(self) -> int:
-        sizes = [asizeof.asizeof(oram.position_map) for oram in self.orams]
-        return sum(sizes)
+    def get_client_size(self) -> int:
+        return asizeof.asizeof(self)

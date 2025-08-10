@@ -41,13 +41,16 @@ class Benchmarker:
             "avg_read_time",
             "avg_write_time",
             "throughput",
-            "client_position_map_size",
+            "client_size",
             "stash_overflow_count",
-            "error_count",
+            "bytes_sent_by_client",
+            "bytes_sent_by_server",
+            "bytes_read",
+            "bytes_written",
         ]
         self.results = pd.DataFrame(columns=columns)
 
-    def setup_communication(self) -> tuple:
+    def setup_communication(self, counters: dict) -> tuple:
         """Setup communication queues between client and server separately"""
         client_message_queue: queue.Queue[bytes] = queue.Queue()
         server_message_queue: queue.Queue[bytes] = queue.Queue()
@@ -66,31 +69,42 @@ class Benchmarker:
         def send_message_init(
             client_id: bytes, storage_size: int, block_size: int, blocks_per_bucket: int
         ) -> None:
-            server_message_queue.put(
+            message_to_server = (
                 client_id
                 + b"I"
                 + storage_size.to_bytes(ADDRESS_SIZE, byteorder="big")
                 + block_size.to_bytes(ADDRESS_SIZE, byteorder="big")
                 + blocks_per_bucket.to_bytes(ADDRESS_SIZE, byteorder="big")
             )
-            client_message_queue.get()
+            server_message_queue.put(message_to_server)
+            message_from_server = client_message_queue.get()
+            counters["client"] += len(message_to_server)
+            counters["server"] += len(message_from_server)
 
         def send_message_read(client_id: bytes, addr: int) -> bytes:
-            server_message_queue.put(
+            message_to_server = (
                 client_id + b"R" + addr.to_bytes(ADDRESS_SIZE, byteorder="big")
             )
-            return client_message_queue.get()
+            server_message_queue.put(message_to_server)
+            message_from_server = client_message_queue.get()
+            counters["client"] += len(message_to_server)
+            counters["server"] += len(message_from_server)
+            return message_from_server
 
         def send_message_write(client_id: bytes, addr: int, message: bytes) -> None:
-            server_message_queue.put(
+            message_to_server = (
                 client_id
                 + b"W"
                 + addr.to_bytes(ADDRESS_SIZE, byteorder="big")
                 + message
             )
-            client_message_queue.get()
+            server_message_queue.put(message_to_server)
+            message_from_server = client_message_queue.get()
+            counters["client"] += len(message_to_server)
+            counters["server"] += len(message_from_server)
 
         def send_message_server(message: bytes) -> None:
+            counters["server"] += len(message)
             client_message_queue.put(message)
 
         return (
@@ -111,7 +125,9 @@ class Benchmarker:
             f"read/write ratio={config.read_write_ratio}"
         )
         print(f"recursive={config.use_recursive}")
-
+        random.seed(0)
+        bandwidth_counters = {"client": 0, "server": 0}
+        information_counters = {"read": 0, "written": 0}
         (
             _,  # client message queue not used
             server_message_queue,
@@ -121,7 +137,7 @@ class Benchmarker:
             send_message_read,
             send_message_write,
             send_message_server,
-        ) = self.setup_communication()
+        ) = self.setup_communication(bandwidth_counters)
 
         key = AESGCM.generate_key(bit_length=256)
 
@@ -167,25 +183,26 @@ class Benchmarker:
             error_count = 0
             stash_overflow_count = 0
 
-            start_time = time.time()
-
+            start_time = time.perf_counter()
             for i in range(config.num_operations):
                 address = random.randint(0, config.storage_size - 1)
                 try:
                     if random.random() < config.read_write_ratio:
-                        op_start = time.time()
+                        op_start = time.perf_counter()
                         data = client_oram.read_block(address)
-                        read_times.append(time.time() - op_start)
+                        read_times.append(time.perf_counter() - op_start)
+                        information_counters["read"] += len(data)
 
                         # verify data integrity for written blocks
                         if address in test_data and data != test_data[address]:
                             error_count += 1
                     else:
                         data = random.randbytes(config.block_size)
-                        op_start = time.time()
+                        op_start = time.perf_counter()
                         client_oram.write_block(address, data)
-                        write_times.append(time.time() - op_start)
+                        write_times.append(time.perf_counter() - op_start)
                         test_data[address] = data
+                        information_counters["written"] += len(data)
 
                 except IndexError as e:
                     if "Bucket overflowed" in str(e):
@@ -195,13 +212,13 @@ class Benchmarker:
                     print(e)
                     error_count += 1
 
-            total_time = time.time() - start_time
+            total_time = time.perf_counter() - start_time
 
             avg_read_time = statistics.mean(read_times) if read_times else 0
             avg_write_time = statistics.mean(write_times) if write_times else 0
             throughput = config.num_operations / total_time
 
-            memory_usage = client_oram.get_position_map_size()
+            client_memory_usage = client_oram.get_client_size()
 
             result = {
                 "config_storage_size": config.storage_size,
@@ -214,9 +231,13 @@ class Benchmarker:
                 "avg_read_time": avg_read_time,
                 "avg_write_time": avg_write_time,
                 "throughput": throughput,
-                "client_position_map_size": memory_usage,
+                "client_size": client_memory_usage,
                 "stash_overflow_count": stash_overflow_count,
                 "error_count": error_count,
+                "bytes_sent_by_client": bandwidth_counters["client"],
+                "bytes_sent_by_server": bandwidth_counters["server"],
+                "bytes_read": information_counters["read"],
+                "bytes_written": information_counters["written"],
             }
             self.results.loc[len(self.results)] = result
             print(result)
@@ -232,11 +253,9 @@ class Benchmarker:
 
     def run_benchmark_suite(self):
         configs = []
-        num_operations = 100
+        num_operations = 1000
 
-        read_write_ratios = [0.5]
-        # read_write_ratios = [0.1, 0.5, 0.9]
-
+        read_write_ratios = [0.1, 0.5, 0.9]
         storage_sizes = [2**s - 1 for s in range(7, 12)]
         block_sizes = [2**s for s in range(5, 9)]
         blocks_per_bucket = [2, 4, 6, 8]

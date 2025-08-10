@@ -28,10 +28,10 @@ def main():
     ]
 
     print(
-        f"recursive client map size: {default_recursive_df.iloc[0].client_position_map_size} bytes"
+        f"recursive client map size: {default_recursive_df.iloc[0].client_size} bytes"
     )
     print(
-        f"non-recursive client map size: {default_non_recursive_df.iloc[0].client_position_map_size} bytes"
+        f"non-recursive client map size: {default_non_recursive_df.iloc[0].client_size} bytes"
     )
 
 
