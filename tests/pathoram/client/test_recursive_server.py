@@ -45,7 +45,7 @@ class TestClientOramRecursiveWithServer(unittest.TestCase):
         self.server.process_command(command)
         response = self.server_responses.pop()
         self.assertTrue(response.startswith(b"R"))
-        return response[1:]
+        return response
 
     def send_write(self, _, leaf_node, data):
         command = CLIENT_ID + b"W" + leaf_node.to_bytes(constants.ADDRESS_SIZE, "big") + data
