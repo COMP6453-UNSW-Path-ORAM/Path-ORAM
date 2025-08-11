@@ -19,17 +19,19 @@ class PositionMap:
     It is backed either by a list, or by another oram, as described in the recursion section of the Path ORAM paper.
     This backing choice is abstracted away from the user.
     """
-
-    def __init__(self, storage_size: int, block_size: int):
+    def __init__(self, num_positions: int, block_size: int, leaf_nodes: int):
         """
         Instantiate a new position map.
         The position map is initially filled with uniformly random leaf nodes,
         as specified in the Path ORAM paper.
         """
-        leaf_nodes = (storage_size + 1) // 2
-        self.position_map: Union[list[bytes], ClientOram] = []
         self.num_address_per_block = block_size // constants.ADDRESS_SIZE
-        for _ in range(storage_size):
+        self.num_blocks = (
+            num_positions + self.num_address_per_block - 1
+        ) // self.num_address_per_block
+        self.blocks: Union[list[bytes], ClientOram] = []
+        assert self.num_address_per_block > 0
+        for _ in range(self.num_blocks):
             block = b"".join(
                 secrets.randbelow(leaf_nodes).to_bytes(
                     constants.ADDRESS_SIZE, byteorder="big"
@@ -38,25 +40,26 @@ class PositionMap:
             )
             while len(block) + 1 <= block_size:
                 block += b"\0"
-            self.position_map.append(block)
+            self.blocks.append(block)
 
-    @classmethod
-    def from_oram(self, oram: "ClientOram", num_address_per_block: int) -> None:
-        """
-        Construct a position map from an oram.
-        """
-        self.position_map = oram
-        self.num_address_per_block = num_address_per_block
+    def replace_with(self, oram: "ClientOram") -> None:
+        self.blocks = oram
+
+    def getBlocks(self) -> list[bytes]:
+        if isinstance(self.blocks, list):
+            return self.blocks
+        return []
+
+    def __len__(self) -> int:
+        assert isinstance(self.blocks, list)
+        return len(self.blocks)
 
     def __getitem__(self, address: int) -> int:
-        """
-        Read from the position map.
-        Used for determining the leaf node a block is recorded as being stored at.
-        """
-        block = self.position_map[address // self.num_address_per_block]
-        i = address % self.num_address_per_block
+        address, i = divmod(address, self.num_address_per_block)
         return int.from_bytes(
-            block[constants.ADDRESS_SIZE * i : constants.ADDRESS_SIZE * (i + 1)],
+            self.blocks[address][
+                constants.ADDRESS_SIZE * i : constants.ADDRESS_SIZE * (i + 1)
+            ],
             byteorder="big",
         )
 
@@ -65,12 +68,12 @@ class PositionMap:
         Write to the position map.
         Used for changing the leaf node a block is recorded as being stored at.
         """
-        block = self.position_map[address // self.num_address_per_block]
-        i = address % self.num_address_per_block
-        block = (
+        address, i = divmod(address, self.num_address_per_block)
+        block = self.blocks[address]
+        self.blocks[address] = (
             block[: constants.ADDRESS_SIZE * i]
             + data.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
-            + block[: constants.ADDRESS_SIZE * (i + 1)]
+            + block[constants.ADDRESS_SIZE * (i + 1) :]
         )
 
 
@@ -129,7 +132,9 @@ class ClientOram:
         # A constant block of all 0s to use as a dummy block
         self.dummy_block: bytes = b"\0" * block_size
 
-        self.position_map = position_map or PositionMap(storage_size, block_size)
+        self.position_map = position_map or PositionMap(
+            self.storage_size, block_size, self.leaf_nodes
+        )
 
         if stash is None:
             self.stash: dict[int, bytes] = {}
@@ -305,50 +310,45 @@ class ClientOramRecursive:
         send_message_write: Callable[[bytes, int, bytes], None],
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
-        stash: Optional[dict[int, bytes]] = None,
+        recursive_depth: int = 2,
         key: Optional[bytes] = None,
     ):
         # storage_sizes is a list of length at most recursive_depth+1
         # for i = 0, 1, ..., recursive_depth-1, Oram i has storage_size=storage_size[i]
         # lastly storage_size[recursive_depth] is the length of the position list
         # stored on client side
-        num_address_per_block = block_size // constants.ADDRESS_SIZE
-        storage_sizes = []
-        size = storage_size
-        while size > 1:
-            storage_sizes.append(size)
-            size = (size + num_address_per_block - 1) // num_address_per_block
-        storage_sizes = storage_sizes[::-1]
+        # num_address_per_block = block_size // constants.ADDRESS_SIZE
 
-        self.position_map = PositionMap(1, block_size)
-        self.orams: list[ClientOram] = []
-        for storage_size in storage_sizes:
-            self.orams.append(
-                ClientOram(
-                    storage_size=storage_size,
-                    send_message_init=send_message_init,
-                    send_message_read=send_message_read,
-                    send_message_write=send_message_write,
-                    block_size=block_size,
-                    blocks_per_bucket=blocks_per_bucket,
-                    position_map=(
-                        PositionMap.from_oram(self.orams[-1], num_address_per_block)
-                        if self.orams
-                        else self.position_map
-                    ),
-                    stash=stash,
-                    key=key,
-                )
+        def create_recursive(position_map: PositionMap, depth: int = 0) -> ClientOram:
+            oram = ClientOram(
+                storage_size=len(position_map),
+                send_message_init=send_message_init,
+                send_message_read=send_message_read,
+                send_message_write=send_message_write,
+                block_size=block_size,
+                blocks_per_bucket=blocks_per_bucket,
+                key=key,
             )
+            for i, data in enumerate(position_map.getBlocks()):
+                oram.write_block(i, data)
+            if len(oram.position_map) > 2 and depth < recursive_depth:
+                oram.position_map.replace_with(
+                    create_recursive(oram.position_map, depth + 1)
+                )
+            return oram
+
+        self.oram = create_recursive(
+            PositionMap(storage_size, block_size, (storage_size + 1) // 2)
+        )
 
     def read_block(self, address: int) -> bytes:
-        return self.orams[-1].read_block(address)
+        return self.oram.read_block(address)
 
     def __getitem__(self, address: int) -> bytes:
         return self.read_block(address)
 
     def write_block(self, address: int, block: bytes) -> None:
-        self.orams[-1].write_block(address, block)
+        self.oram.write_block(address, block)
 
     def __setitem__(self, address: int, block: bytes) -> None:
         return self.write_block(address, block)
