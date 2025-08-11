@@ -210,7 +210,7 @@ class Benchmarker:
                     if "Bucket overflowed" in str(e):
                         stash_overflow_count += 1
                     error_count += 1
-                except Exception as e:
+                except Exception:
                     error_count += 1
 
             total_time = time.perf_counter() - start_time
