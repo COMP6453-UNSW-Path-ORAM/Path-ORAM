@@ -281,10 +281,7 @@ class Benchmarker:
 
         for i, config in enumerate(configs):
             print(f"Progress: {i+1}/{len(configs)}")
-            try:
-                self.run_benchmark(config)
-            except Exception as e:
-                print(f"Error in benchmark {i+1}: {e}")
+            self.run_benchmark(config)
 
         return self.results
 
