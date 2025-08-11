@@ -3,6 +3,7 @@ from typing import Callable, Optional, Union
 from uuid import uuid4
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from pympler import asizeof
 
 from . import constants
 from .bit_util import bit_ceil, get_bucket
@@ -127,6 +128,9 @@ class ClientOram:
         self._write_blocks_from_stash(leaf_node)
         return block
 
+    def get_client_size(self) -> int:
+        return int(asizeof.asizeof(self))  # type: ignore[no-untyped-call]
+
     def __getitem__(self, address: int) -> bytes:
         return self.read_block(address)
 
@@ -146,10 +150,6 @@ class ClientOram:
         # Remap block to a new leaf node
         old_leaf_node = self.position_map[address]
         self.position_map[address] = secrets.randbelow(self.leaf_nodes)
-
-        # If the block is in the stash already, leave it be
-        if address in self.stash:
-            return
 
         # Find the leaf node this block is on the path to
         encrypted_blocks = self.send_message_read(self.client_id, old_leaf_node)[1:]
@@ -302,3 +302,6 @@ class ClientOramRecursive:
 
     def __setitem__(self, address: int, block: bytes) -> None:
         return self.write_block(address, block)
+
+    def get_client_size(self) -> int:
+        return int(asizeof.asizeof(self))  # type: ignore[no-untyped-call]
