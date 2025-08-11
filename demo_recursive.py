@@ -17,6 +17,7 @@ def main() -> None:
     key = AESGCM.generate_key(bit_length=256)
 
     # start server first!
+    print("starting server for recursive demo...")
     server_oram = ServerOram(send_message_server)
     server_thread = threading.Thread(
         target=watch_for_messages_server, args=(server_oram,)
@@ -31,12 +32,28 @@ def main() -> None:
         recursive_depth=1,
         key=key,
     )
-    client_oram.write_block(0, b"abcd" * 16)
+
+    data = b"abcd" * 16
+    client_oram.write_block(0, data)
+    print(f"client wrote [ {data} ] to block [ 0 ]")
+    
+    data = b"dbac" * 16
     client_oram.write_block(1, b"dbac" * 16)
+    print(f"client wrote [ {data} ] to block [ 1 ]")
+
+    print("client read from block [ 0 ]:")
     print(client_oram.read_block(0))
+
+    print("client read from block [ 1 ]:")
     print(client_oram.read_block(1))
+
+    data = b"1234" * 16
     client_oram.write_block(0, b"1234" * 16)
+    print(f"client wrote [ {data} ] to block [ 0 ]")
+
+    print("client read from block [ 0 ]:")
     print(client_oram.read_block(0))
+
     stop_event.set()
     server_message_queue.put(b"")
     server_thread.join()

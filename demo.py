@@ -18,6 +18,7 @@ def main() -> None:
     key = AESGCM.generate_key(bit_length=256)
 
     # start server first!
+    print("starting server for demo...")
     server_oram = ServerOram(send_message_server)
     server_thread = threading.Thread(
         target=watch_for_messages_server, args=(server_oram,)
@@ -31,25 +32,41 @@ def main() -> None:
         send_message_init=send_message_init,
         key=key,
     )
-    client_oram.write_block(0, b"abcd" * 16)
+
+    data = b"abcd" * 16
+    client_oram.write_block(0, data)
+    print(f"client wrote [ {data} ] to block [ 0 ]")
+    
+    data = b"dbac" * 16
     client_oram.write_block(1, b"dbac" * 16)
-    print(client_oram.read_block(0))
-    print(client_oram.read_block(1))
-    client_oram.write_block(0, b"1234" * 16)
+    print(f"client wrote [ {data} ] to block [ 1 ]")
+
+    print("client read from block [ 0 ]:")
     print(client_oram.read_block(0))
 
+    print("client read from block [ 1 ]:")
+    print(client_oram.read_block(1))
+
+    data = b"1234" * 16
+    client_oram.write_block(0, b"1234" * 16)
+    print(f"client wrote [ {data} ] to block [ 0 ]")
+
+    print("client read from block [ 0 ]:")
+    print(client_oram.read_block(0))
+
+    print("stress testing...")
     A = [b"0" * 64 for _ in range(2047)]
     for i in range(2047):
         client_oram.write_block(i, A[i])
     for _ in range(1000):
-        i = random.randint(0, 2047)
+        i = random.randint(0, 2046)
         if random.choice("RW") == "R":
             assert A[i] == client_oram.read_block(i)
         else:
             d = random.randbytes(64)
             A[i] = d
             client_oram.write_block(i, d)
-
+    print("demo finished. stopping server...")
     stop_event.set()
     server_message_queue.put(b"")
     server_thread.join()
