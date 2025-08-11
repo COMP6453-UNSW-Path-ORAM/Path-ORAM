@@ -37,7 +37,7 @@ class ServerOramPerClient:
         The left child of a node with index i is 2*i+1
         The right child of a node with index i is 2*i+2
         """
-       
+
         self.storage_size: int = storage_size
         # Each node is a list of multiple blocks
         self.tree: list[list[bytes]] = [[] for _ in range(self.storage_size)]
@@ -84,7 +84,7 @@ class ServerOramPerClient:
 
     def _read_path(self, leaf_node: int) -> bytes:
         """
-        Reads a path from the binary tree from root to the given leaf node, 
+        Reads a path from the binary tree from root to the given leaf node,
         which is indexed from 0 from the left on the leaf level.
         Reading a path empties that path, because a read is always followed by a write.
         Which fills the path up again.
@@ -139,6 +139,7 @@ class ServerOram:
     Otherwise, it reads the client ID from the command and routes it to the appropriate storage.
     Which is an instance of the class ServerOramPerClient.
     """
+
     def __init__(
         self,
         send_message: Callable[[bytes], None],

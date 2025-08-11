@@ -15,10 +15,11 @@ class PositionMap:
     It is accessed similarly to a hashmap, with the mapping:
     leaf_node = PositionMap[address].
     where address is in the address-space of blocks exposed to the user of the pathoram client.
-    
+
     It is backed either by a list, or by another oram, as described in the recursion section of the Path ORAM paper.
     This backing choice is abstracted away from the user.
     """
+
     def __init__(self, storage_size: int, block_size: int):
         """
         Instantiate a new position map.
