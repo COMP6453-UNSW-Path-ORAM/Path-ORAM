@@ -70,11 +70,13 @@ def watch_for_messages_server(test_oram: TestOram) -> None:
             test_oram.server_oram.process_command(command)
 
 
-def create_send_functions(test_oram: TestOram) -> tuple[
-        Callable[[bytes, int], bytes],
-        Callable[[bytes, int, bytes], None],
-        Callable[[bytes, int, int, int], None],
-        Callable[[bytes], None]
+def create_send_functions(
+    test_oram: TestOram,
+) -> tuple[
+    Callable[[bytes, int], bytes],
+    Callable[[bytes, int, bytes], None],
+    Callable[[bytes, int, int, int], None],
+    Callable[[bytes], None],
 ]:
     def send_message_init(
         client_id: bytes, storage_size: int, block_size: int, blocks_per_bucket: int

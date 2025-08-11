@@ -1,7 +1,9 @@
+from collections.abc import Generator
+
 import pytest
 from test_setup import TestOram, pad
+
 from pathoram.client.constants import DEFAULT_BLOCK_SIZE
-from typing import Generator
 
 
 @pytest.fixture

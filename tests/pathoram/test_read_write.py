@@ -1,10 +1,10 @@
 """tests for basic read and write functionality of client to server."""
 
 import random
+from collections.abc import Generator
 
 import pytest
 from test_setup import TestOram, pad
-from typing import Generator
 
 
 @pytest.fixture(params=[127, 15, 16383, 100000], ids=["basic", "small", "big", "huge"])
