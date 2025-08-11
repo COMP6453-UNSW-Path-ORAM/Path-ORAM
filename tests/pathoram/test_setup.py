@@ -1,6 +1,6 @@
-'''
+"""
 Sets up client and server for testing.
-'''
+"""
 
 import queue
 import threading
@@ -13,14 +13,16 @@ from pathoram.client.constants import DEFAULT_BLOCK_SIZE
 from pathoram.client.pathoram_client import ClientOram
 from pathoram.server.pathoram_server import ServerOram
 
+
 class TestOram:
-    '''contains the required setup and teardown functions for pytest fixtures.'''
+    """contains the required setup and teardown functions for pytest fixtures."""
+
     def setup(self, storage_size: int):
         self.storage_size = storage_size
 
         self.client_message_queue: queue.Queue[bytes] = queue.Queue()
         self.server_message_queue: queue.Queue[bytes] = queue.Queue()
-        
+
         self.server_last_queue_obj: Optional[bytes] = None
 
         self.client_oram: Optional[ClientOram] = None
@@ -30,10 +32,12 @@ class TestOram:
         self.server_thread: Optional[threading.Thread] = None
 
         key = AESGCM.generate_key(bit_length=256)
-        [ send_message_read, 
-         send_message_write, 
-         send_message_init, 
-         send_message_server ] = create_send_functions(self)
+        [
+            send_message_read,
+            send_message_write,
+            send_message_init,
+            send_message_server,
+        ] = create_send_functions(self)
 
         # start server first!
         self.server_oram = ServerOram(send_message_server)
@@ -55,12 +59,14 @@ class TestOram:
         self.server_message_queue.put(b"")
         self.server_thread.join()
 
+
 def watch_for_messages_server(test_oram: TestOram) -> None:
     while not test_oram.stop_event.is_set():
         command = test_oram.server_message_queue.get()
         test_oram.server_last_queue_obj = command
         if not test_oram.stop_event.is_set():
             test_oram.server_oram.process_command(command)
+
 
 def create_send_functions(test_oram: TestOram):
     def send_message_init(
@@ -94,8 +100,9 @@ def create_send_functions(test_oram: TestOram):
 
     return send_message_read, send_message_write, send_message_init, send_message_server
 
+
 def pad(data: bytes, block_size: int = DEFAULT_BLOCK_SIZE):
-    '''pads any data short of the block_size'''
+    """pads any data short of the block_size"""
     if len(data) > block_size:
         return data
-    return data + (DEFAULT_BLOCK_SIZE - len(data))*b'\x00'
+    return data + (DEFAULT_BLOCK_SIZE - len(data)) * b"\x00"

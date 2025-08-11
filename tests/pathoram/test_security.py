@@ -1,26 +1,26 @@
-'''security tests.'''
+"""security tests."""
 
 import pytest
+from test_setup import TestOram
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
-from test_setup import TestOram, pad
 
 @pytest.fixture(params=[127, 15, 16383, 100000], ids=["basic", "small", "big", "huge"])
 def oram_instance(request):
-    '''fixture that takes variable sized orams.'''
+    """fixture that takes variable sized orams."""
     oram = TestOram()
     oram.setup(storage_size=request.param)
     yield oram
     oram.teardown()
 
+
 @pytest.fixture
 def oram_instance_specific():
-    '''for single size oram use.'''
+    """for single size oram use."""
     oram = TestOram()
     oram.setup(storage_size=15)
     yield oram
     oram.teardown()
+
 
 # def test_enc_block_size(oram_instance):
 #     '''test encrypted blocks are same size.'''
@@ -59,13 +59,13 @@ def oram_instance_specific():
 
 #     assert block == cid + b"W" + nonce + plaintext
 
-    # case: decryption works
+# case: decryption works
 
-    # case: bitflip
+# case: bitflip
 
 # def test_check_buckets_all_enc(oram_instance_specific):
 #     '''test all contents in each bucket are encrypted.'''
 
+
 def test_diff_path(oram_instance):
-    '''check that the same op yields different blocks indicating shuffled'''
-    
+    """check that the same op yields different blocks indicating shuffled"""

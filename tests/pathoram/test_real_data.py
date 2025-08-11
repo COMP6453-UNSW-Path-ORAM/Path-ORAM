@@ -1,6 +1,6 @@
 import pytest
+from test_setup import DEFAULT_BLOCK_SIZE, TestOram, pad
 
-from test_setup import TestOram, pad, DEFAULT_BLOCK_SIZE
 
 @pytest.fixture
 def oram_instance(request):
@@ -9,12 +9,13 @@ def oram_instance(request):
     yield oram
     oram.teardown()
 
+
 def test_real_data(oram_instance):
-    '''test uploading and reading (procedurally generatred) real world data.
-       We generated plausible customer records using mockaroo.com to test data
-       that a business would plausibly want to obscure their access patterns to.'''
+    """test uploading and reading (procedurally generatred) real world data.
+    We generated plausible customer records using mockaroo.com to test data
+    that a business would plausibly want to obscure their access patterns to."""
     data = b""
-    with open('real_world_data.csv', 'rb') as file:
+    with open("real_world_data.csv", "rb") as file:
         data = file.read()
 
     padded_data_list: list[bytes] = []
