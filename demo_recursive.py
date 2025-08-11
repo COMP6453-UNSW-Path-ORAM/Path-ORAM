@@ -35,7 +35,7 @@ def main() -> None:
     data = b"abcd" * 16
     client_oram.write_block(0, data)
     print(f"client wrote [ {data} ] to block [ 0 ]")
-    
+
     data = b"dbac" * 16
     client_oram.write_block(1, b"dbac" * 16)
     print(f"client wrote [ {data} ] to block [ 1 ]")

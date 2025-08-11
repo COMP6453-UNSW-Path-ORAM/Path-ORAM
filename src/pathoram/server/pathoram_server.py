@@ -1,8 +1,6 @@
 import secrets
 from typing import Callable
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
 from . import constants
 
 
@@ -45,7 +43,7 @@ class ServerOramPerClient:
         for i in range(self.storage_size):
             for _ in range(self.blocks_per_bucket):
                 nonce: bytes = secrets.token_bytes(12)
-                encrypted_block = dummy_address + dummy_block + b"\0"*16
+                encrypted_block = dummy_address + dummy_block + b"\0" * 16
                 self.tree[i].append(nonce + encrypted_block)
 
     def process_command(self, command: bytes) -> None:

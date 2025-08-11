@@ -201,7 +201,7 @@ class ClientOram:
                 )
                 dummy_block: bytes = b"\0" * self.block_size
                 block = dummy_address + dummy_block
-                
+
             address = int.from_bytes(block[: constants.ADDRESS_SIZE], byteorder="big")
             block = block[constants.ADDRESS_SIZE :]
             if address != 256**constants.ADDRESS_SIZE - 1:
