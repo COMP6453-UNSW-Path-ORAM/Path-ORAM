@@ -19,7 +19,7 @@ def test_real_data(oram_instance: TestOram) -> None:
     We generated plausible customer records using mockaroo.com to test data
     that a business would plausibly want to obscure their access patterns to."""
     data = b""
-    with open("real_world_data.csv", "rb") as file:
+    with open("tests/pathoram/real_world_data.csv", "rb") as file:
         data = file.read()
 
     assert oram_instance.client_oram is not None

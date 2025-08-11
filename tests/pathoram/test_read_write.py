@@ -66,18 +66,12 @@ def test_client_read_posmap(oram_instance: TestOram) -> None:
     data = pad(b"aaaaaaa")
     assert oram_instance.client_oram is not None
     oram_instance.client_oram.write_block(0, data)
-    init_leaf = int.from_bytes(
-        oram_instance.client_oram.position_map[0], byteorder="big"
-    )
+    init_leaf = oram_instance.client_oram.position_map[0]
     oram_instance.client_oram.read_block(0)
-    mid_leaf = int.from_bytes(
-        oram_instance.client_oram.position_map[0], byteorder="big"
-    )
+    mid_leaf = oram_instance.client_oram.position_map[0]
     assert init_leaf != mid_leaf
     result = oram_instance.client_oram.read_block(0)
-    res_leaf = int.from_bytes(
-        oram_instance.client_oram.position_map[0], byteorder="big"
-    )
+    res_leaf = oram_instance.client_oram.position_map[0]
     assert mid_leaf != res_leaf
     assert data == result
 
