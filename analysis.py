@@ -26,8 +26,28 @@ def calculate_derived_metrics(df):
     df["total_information"] = df["bytes_read"] + df["bytes_written"]
     # overhead ratio, lower is better
     df["bandwidth_overhead"] = df["total_bandwidth"] / df["total_information"]
-    df["storage_size"] = df["config_storage_size"]
+    df["storage_size"] = df["config_storage_size"]  # rename
+    df["avg_latency"] = df["total_time"] / df["config_num_operations"]
     return df
+
+
+def plot_latency_vs_throughput(df):
+    plt.figure(figsize=(12, 7))
+    g = sns.scatterplot(
+        data=df,
+        x="throughput",
+        y="avg_latency",
+        hue="config_use_recursive",
+        style="config_use_recursive",
+        s=100,
+    )
+    g.set_title("Latency (time to complete a request) in sec vs. Throughput")
+    g.set_xlabel("Throughput", fontsize=12)
+    g.set_ylabel("Latency (sec)", fontsize=12)
+    g.legend(title="Recursive ORAM")
+    plt.tight_layout()
+    plt.savefig("plots/latency_vs_throughput.png")
+    plt.close()
 
 
 def plot_throughput_vs_storage_size(df):
@@ -125,7 +145,7 @@ def analyze_read_write_ratio(df):
 
 
 def find_best_params(df):
-    reliable_df = df[df["stash_overflow_count"] == 0].copy()  # should be none
+    reliable_df = df[df["error_count"] == 0].copy()  # should be none
 
     # usecase - High-Throughput Computing
     # Maximize operations per second

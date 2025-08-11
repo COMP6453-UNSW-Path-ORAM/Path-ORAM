@@ -44,7 +44,7 @@ class Benchmarker:
             "throughput",
             "client_size",
             "stash_overflow_count",
-            "bytes_sent_by_client",
+            "error_count" "bytes_sent_by_client",
             "bytes_sent_by_server",
             "bytes_read",
             "bytes_written",
