@@ -145,12 +145,10 @@ def analyze_read_write_ratio(df):
 
 
 def find_best_params(df):
-    reliable_df = df[df["error_count"] == 0].copy()  # should be none
-
     # usecase - High-Throughput Computing
     # Maximize operations per second
     print("\nUse Case: High-Throughput Computing")
-    best_throughput = reliable_df.sort_values(by="throughput", ascending=False).iloc[0]
+    best_throughput = df.sort_values(by="throughput", ascending=False).iloc[0]
     print(
         best_throughput[
             [
@@ -168,7 +166,7 @@ def find_best_params(df):
     # usecase - Constrained IoT/Mobile Device
     # Minimize client-side memory usage.
     print("\nUse Case: Constrained Device (Minimize Client Memory)")
-    best_client_size = reliable_df.sort_values(by="client_size", ascending=True).iloc[0]
+    best_client_size = df.sort_values(by="client_size", ascending=True).iloc[0]
     print(
         best_client_size[
             [
@@ -186,9 +184,7 @@ def find_best_params(df):
     # usecase - Metered/Slow Network
     # Minimize bandwidth overhead.
     print("\nUse Case: Metered Network (Minimize Bandwidth Overhead)")
-    best_bandwidth = reliable_df.sort_values(
-        by="bandwidth_overhead", ascending=True
-    ).iloc[0]
+    best_bandwidth = df.sort_values(by="bandwidth_overhead", ascending=True).iloc[0]
     print(
         best_bandwidth[
             [
@@ -208,7 +204,7 @@ def find_best_params(df):
     # We create a composite score to rank them. Lower is better.
     print("\nUse Case: Balanced / General Purpose")
     # fix
-    balanced_df = reliable_df.copy()
+    balanced_df = df.copy()
     balanced_df["norm_throughput"] = 1 - (
         balanced_df["throughput"] / balanced_df["throughput"].max()
     )
