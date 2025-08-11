@@ -138,9 +138,12 @@ class ClientOram:
         # A constant block of all 0s to use as a dummy block
         self.dummy_block: bytes = b"\0" * block_size
 
-        self.position_map = position_map or PositionMap(
-            self.storage_size, block_size, self.leaf_nodes
-        )
+        if position_map is None:
+            self.position_map = PositionMap(
+                self.storage_size, block_size, self.leaf_nodes
+            )
+        else:
+            self.position_map = position_map
 
         if stash is None:
             self.stash: dict[int, bytes] = {}
@@ -182,6 +185,7 @@ class ClientOram:
         then modified in the stash,
         then the stash must be written back to the leaf node that was read from
         """
+        assert 0 <= address < self.storage_size
         leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         self.stash[address] = block
@@ -351,8 +355,17 @@ class ClientOramRecursive:
                 )
             return oram
 
-        self.oram = create_recursive(
-            PositionMap(storage_size, block_size, (storage_size + 1) // 2)
+        position_map = PositionMap(storage_size, block_size, (storage_size + 1) // 2)
+        position_map.replace_with(create_recursive(position_map))
+        self.oram = ClientOram(
+            storage_size=storage_size,
+            send_message_init=send_message_init,
+            send_message_read=send_message_read,
+            send_message_write=send_message_write,
+            block_size=block_size,
+            blocks_per_bucket=blocks_per_bucket,
+            position_map=position_map,
+            key=key,
         )
 
     def read_block(self, address: int) -> bytes:
