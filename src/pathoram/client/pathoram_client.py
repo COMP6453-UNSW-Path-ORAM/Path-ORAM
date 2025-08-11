@@ -13,8 +13,8 @@ class PositionMap:
     """
     The position map stores the leaf node each block is stored on the path to.
     It is accessed similarly to a hashmap, with the mapping:
-    leaf_node = PositionMap[address]
-    where address is in the address-space of blocks exposed to the user of the pathoram client
+    leaf_node = PositionMap[address].
+    where address is in the address-space of blocks exposed to the user of the pathoram client.
     
     It is backed either by a list, or by another oram, as described in the recursion section of the Path ORAM paper.
     This backing choice is abstracted away from the user.
@@ -42,15 +42,15 @@ class PositionMap:
     @classmethod
     def from_oram(self, oram: "ClientOram", num_address_per_block: int) -> None:
         """
-        Construct a position map from an oram
+        Construct a position map from an oram.
         """
         self.position_map = oram
         self.num_address_per_block = num_address_per_block
 
     def __getitem__(self, address: int) -> int:
         """
-        Read from the position map
-        Used for determining the leaf node a block is recorded as being stored at
+        Read from the position map.
+        Used for determining the leaf node a block is recorded as being stored at.
         """
         block = self.position_map[address // self.num_address_per_block]
         i = address % self.num_address_per_block
@@ -61,8 +61,8 @@ class PositionMap:
 
     def __setitem__(self, address: int, data: int) -> None:
         """
-        Write to the position map
-        Used for changing the leaf node a block is recorded as being stored at
+        Write to the position map.
+        Used for changing the leaf node a block is recorded as being stored at.
         """
         block = self.position_map[address // self.num_address_per_block]
         i = address % self.num_address_per_block
@@ -75,10 +75,11 @@ class PositionMap:
 
 class ClientOram:
     """The Oram presents the following interface to its users:
-    There is a contiguous array of blocks, each containing a number of bytes
-    Each block can be accessed by its address in the array, to be read or written to
-    The behaviour of reading a block which has not yet been written to is undefined
-    The array cannot be resized"""
+    There is a contiguous array of blocks, each containing a number of bytes.
+    Each block can be accessed by its address in the array, to be read or written to.
+    The behaviour of reading a block which has not yet been written to is undefined.
+    The array cannot be resized.
+    """
 
     def __init__(
         self,

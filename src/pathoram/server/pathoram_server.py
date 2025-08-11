@@ -8,14 +8,14 @@ from . import constants
 
 class ServerOramPerClient:
     """
-    This class is intended to be used in the following simple loop
+    This class is intended to be used in the following simple loop:
     while True:
         command = wait_for_command()
         Oram.process_command(command)
 
-    The class processes commands send by the client to read or write data
-    The class mainly consists of a complete binary tree where each node (bucket) contains multiple blocks
-    Implementation details for this are documented in the __init__ method
+    The class processes commands send by the client to read or write data.
+    The class mainly consists of a complete binary tree where each node (bucket) contains multiple blocks.
+    Implementation details for this are documented in the __init__ method.
     """
 
     def __init__(
@@ -66,7 +66,7 @@ class ServerOramPerClient:
     def process_command(self, command: bytes) -> None:
         """
         The only exposed method (apart from the initialiser), processes a command from the client.
-        Commands are either "Read" or "Write"
+        Commands are either "Read" or "Write".
         """
         if command[0:1] == b"R":
             self.send_message(
@@ -85,9 +85,9 @@ class ServerOramPerClient:
     def _read_path(self, leaf_node: int) -> bytes:
         """
         Reads a path from the binary tree from root to the given leaf node, 
-        which is indexed from 0 from the left on the leaf level
-        Reading a path empties that path, because a read is always followed by a write
-        Which fills the path up again
+        which is indexed from 0 from the left on the leaf level.
+        Reading a path empties that path, because a read is always followed by a write.
+        Which fills the path up again.
         Returns all the blocks on the path, concatenated.
         """
         # Adjust leaf node from measuring from the left on the leaf level
@@ -107,10 +107,10 @@ class ServerOramPerClient:
         Writes a block to a certain level along a certain path on the tree.
         The combination of leaf node and level uniquely identifies a bucket.
         Then, the given block is written to the bucket.
-        It is the responsibility of the client to not write too many blocks to each bucket
+        It is the responsibility of the client to not write too many blocks to each bucket.
 
-        A series of these write commands should follow a read
-        The path should be empty after the read, and slowly filled by the write commands
+        A series of these write commands should follow a read.
+        The path should be empty after the read, and slowly filled by the write commands.
         """
         leaf_node_bytes = command[0 : constants.ADDRESS_SIZE]
         level_bytes = command[
@@ -134,10 +134,10 @@ class ServerOramPerClient:
 
 class ServerOram:
     """
-    This class manages the storage for amny different clients.
-    If it receives a command beginning with I, it initialises a new storage
-    Otherwise, it reads the client ID from the command and routes it to the appropriate storage
-    Which is an instance of the class ServerOramPerClient
+    This class manages the storage for many different clients.
+    If it receives a command beginning with I, it initialises a new storage.
+    Otherwise, it reads the client ID from the command and routes it to the appropriate storage.
+    Which is an instance of the class ServerOramPerClient.
     """
     def __init__(
         self,
