@@ -44,6 +44,7 @@ class Benchmarker:
             "throughput",
             "client_size",
             "stash_overflow_count",
+            "error_count",
             "bytes_sent_by_client",
             "bytes_sent_by_server",
             "bytes_read",
@@ -143,7 +144,7 @@ class Benchmarker:
         key = AESGCM.generate_key(bit_length=256)
 
         # setup server
-        server_oram = ServerOram(send_message_server, key=key)
+        server_oram = ServerOram(send_message_server)
         server_thread = threading.Thread(
             target=watch_for_messages_server, args=(server_oram,)
         )
@@ -209,8 +210,7 @@ class Benchmarker:
                     if "Bucket overflowed" in str(e):
                         stash_overflow_count += 1
                     error_count += 1
-                except Exception as e:
-                    print(e)
+                except Exception:
                     error_count += 1
 
             total_time = time.perf_counter() - start_time
@@ -218,7 +218,6 @@ class Benchmarker:
             avg_read_time = statistics.mean(read_times) if read_times else 0
             avg_write_time = statistics.mean(write_times) if write_times else 0
             throughput = config.num_operations / total_time
-
             client_memory_usage = client_oram.get_client_size()
 
             result = {
@@ -244,9 +243,6 @@ class Benchmarker:
             print(result)
             return result
 
-        except Exception as e:
-            print(e)
-
         finally:
             stop_event.set()
             server_message_queue.put(b"")
@@ -256,10 +252,10 @@ class Benchmarker:
         configs = []
         num_operations = 1000
 
-        read_write_ratios = [0.1, 0.5, 0.9]
-        storage_sizes = [2**s - 1 for s in range(7, 12)]
-        block_sizes = [2**s for s in range(5, 9)]
-        blocks_per_bucket = [2, 4, 6, 8]
+        read_write_ratios = [0.5]
+        storage_sizes = [2**s - 1 for s in range(7, 8)]
+        block_sizes = [2**s for s in range(5, 6)]
+        blocks_per_bucket = [2]
         recursive_options = [True, False]
 
         # non-resurcive
@@ -285,10 +281,7 @@ class Benchmarker:
 
         for i, config in enumerate(configs):
             print(f"Progress: {i+1}/{len(configs)}")
-            try:
-                self.run_benchmark(config)
-            except Exception as e:
-                print(f"Error in benchmark {i+1}: {e}")
+            self.run_benchmark(config)
 
         return self.results
 

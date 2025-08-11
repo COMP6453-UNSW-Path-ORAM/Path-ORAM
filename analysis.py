@@ -26,8 +26,28 @@ def calculate_derived_metrics(df):
     df["total_information"] = df["bytes_read"] + df["bytes_written"]
     # overhead ratio, lower is better
     df["bandwidth_overhead"] = df["total_bandwidth"] / df["total_information"]
-    df["storage_size"] = df["config_storage_size"]
+    df["storage_size"] = df["config_storage_size"]  # rename
+    df["avg_latency"] = df["total_time"] / df["config_num_operations"]
     return df
+
+
+def plot_latency_vs_throughput(df):
+    plt.figure(figsize=(12, 7))
+    g = sns.scatterplot(
+        data=df,
+        x="throughput",
+        y="avg_latency",
+        hue="config_use_recursive",
+        style="config_use_recursive",
+        s=100,
+    )
+    g.set_title("Latency (time to complete a request) in sec vs. Throughput")
+    g.set_xlabel("Throughput", fontsize=12)
+    g.set_ylabel("Latency (sec)", fontsize=12)
+    g.legend(title="Recursive ORAM")
+    plt.tight_layout()
+    plt.savefig("plots/latency_vs_throughput.png")
+    plt.close()
 
 
 def plot_throughput_vs_storage_size(df):
@@ -124,10 +144,107 @@ def analyze_read_write_ratio(df):
     plt.close()
 
 
+def find_best_params(df):
+    # usecase - High-Throughput Computing
+    # Maximize operations per second
+    print("\nUse Case: High-Throughput Computing")
+    best_throughput = df.sort_values(by="throughput", ascending=False).iloc[0]
+    print(
+        best_throughput[
+            [
+                "config_storage_size",
+                "config_block_size",
+                "config_blocks_per_bucket",
+                "config_use_recursive",
+                "throughput",
+                "client_size",
+                "bandwidth_overhead",
+            ]
+        ]
+    )
+
+    # usecase - Constrained IoT/Mobile Device
+    # Minimize client-side memory usage.
+    print("\nUse Case: Constrained Device (Minimize Client Memory)")
+    best_client_size = df.sort_values(by="client_size", ascending=True).iloc[0]
+    print(
+        best_client_size[
+            [
+                "config_storage_size",
+                "config_block_size",
+                "config_blocks_per_bucket",
+                "config_use_recursive",
+                "throughput",
+                "client_size",
+                "bandwidth_overhead",
+            ]
+        ]
+    )
+
+    # usecase - Metered/Slow Network
+    # Minimize bandwidth overhead.
+    print("\nUse Case: Metered Network (Minimize Bandwidth Overhead)")
+    best_bandwidth = df.sort_values(by="bandwidth_overhead", ascending=True).iloc[0]
+    print(
+        best_bandwidth[
+            [
+                "config_storage_size",
+                "config_block_size",
+                "config_blocks_per_bucket",
+                "config_use_recursive",
+                "throughput",
+                "client_size",
+                "bandwidth_overhead",
+            ]
+        ]
+    )
+
+    # usecase - Balanced/General Purpose
+    # A good mix of throughput, client size, and bandwidth.
+    # We create a composite score to rank them. Lower is better.
+    print("\nUse Case: Balanced / General Purpose")
+    # fix
+    balanced_df = df.copy()
+    balanced_df["norm_throughput"] = 1 - (
+        balanced_df["throughput"] / balanced_df["throughput"].max()
+    )
+    balanced_df["norm_client_size"] = (
+        balanced_df["client_size"] / balanced_df["client_size"].max()
+    )
+    balanced_df["norm_bandwidth"] = (
+        balanced_df["bandwidth_overhead"] / balanced_df["bandwidth_overhead"].max()
+    )
+    balanced_df["performance_score"] = (
+        balanced_df["norm_throughput"]
+        + balanced_df["norm_client_size"]
+        + balanced_df["norm_bandwidth"]
+    )
+    best_balanced = balanced_df.sort_values(
+        by="performance_score", ascending=True
+    ).iloc[0]
+    print(
+        best_balanced[
+            [
+                "config_storage_size",
+                "config_block_size",
+                "config_blocks_per_bucket",
+                "config_use_recursive",
+                "throughput",
+                "client_size",
+                "bandwidth_overhead",
+                "performance_score",
+            ]
+        ]
+    )
+
+
 def main():
     df = load_data()
     df = calculate_derived_metrics(df)
 
+    find_best_params(df)
+
+    plot_latency_vs_throughput(df)
     plot_throughput_vs_storage_size(df)
     plot_client_size_vs_storage_size(df)
     plot_bandwidth_overhead_vs_block_size(df)
