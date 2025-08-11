@@ -3,13 +3,31 @@ from typing import Callable, Optional, Union
 from uuid import uuid4
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from pympler import asizeof
 
 from . import constants
 from .bit_util import bit_ceil, get_bucket
 
 
 class PositionMap:
+
+    """
+    The position map stores the leaf node each block is stored on the path to.
+    It is accessed similarly to a hashmap, with the mapping:
+    leaf_node = PositionMap[address].
+    where address is in the address-space of blocks exposed to the user of the pathoram client.
+
+    It is backed either by a list, or by another oram, as described in the recursion section of the Path ORAM paper.
+    This backing choice is abstracted away from the user.
+    """
     def __init__(self, num_positions: int, block_size: int, leaf_nodes: int):
+        """
+        Instantiate a new position map.
+        The position map is initially filled with uniformly random leaf nodes,
+        as specified in the Path ORAM paper.
+        """
+        leaf_nodes = (storage_size + 1) // 2
+        self.position_map: Union[list[bytes], ClientOram] = []
         self.num_address_per_block = block_size // constants.ADDRESS_SIZE
         self.num_blocks = (
             num_positions + self.num_address_per_block - 1
@@ -41,6 +59,11 @@ class PositionMap:
 
     def __getitem__(self, address: int) -> int:
         address, i = divmod(address, self.num_address_per_block)
+
+        """
+        Read from the position map.
+        Used for determining the leaf node a block is recorded as being stored at.
+        """
         return int.from_bytes(
             self.blocks[address][
                 constants.ADDRESS_SIZE * i : constants.ADDRESS_SIZE * (i + 1)
@@ -52,6 +75,10 @@ class PositionMap:
         address, i = divmod(address, self.num_address_per_block)
         block = self.blocks[address]
         self.blocks[address] = (
+        """
+        Write to the position map.
+        Used for changing the leaf node a block is recorded as being stored at.
+        """
             block[: constants.ADDRESS_SIZE * i]
             + data.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
             + block[constants.ADDRESS_SIZE * (i + 1) :]
@@ -60,10 +87,11 @@ class PositionMap:
 
 class ClientOram:
     """The Oram presents the following interface to its users:
-    There is a contiguous array of blocks, each containing a number of bytes
-    Each block can be accessed by its address in the array, to be read or written to
-    The behaviour of reading a block which has not yet been written to is undefined
-    The array cannot be resized"""
+    There is a contiguous array of blocks, each containing a number of bytes.
+    Each block can be accessed by its address in the array, to be read or written to.
+    The behaviour of reading a block which has not yet been written to is undefined.
+    The array cannot be resized.
+    """
 
     def __init__(
         self,
@@ -134,16 +162,28 @@ class ClientOram:
         )
 
     def read_block(self, address: int) -> bytes:
+        """
+        To read a block, it must be read from the server into the stash,
+        then the stash must be written back to the leaf node that was read from
+        """
         leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         block = self.stash[address]
         self._write_blocks_from_stash(leaf_node)
         return block
 
+    def get_client_size(self) -> int:
+        return int(asizeof.asizeof(self))  # type: ignore[no-untyped-call]
+
     def __getitem__(self, address: int) -> bytes:
         return self.read_block(address)
 
     def write_block(self, address: int, block: bytes) -> None:
+        """
+        To read a block, it must be read from the server into the stash,
+        then modified in the stash,
+        then the stash must be written back to the leaf node that was read from
+        """
         leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         self.stash[address] = block
@@ -153,16 +193,19 @@ class ClientOram:
         return self.write_block(address, block)
 
     def _read_block_into_stash(self, address: int) -> None:
+        """
+        Private method.
+        Reads a block from the server into the local stash
+        This deletes all the blocks along the path read from the server
+        They live exclusively in the stash until the next write
+        Which always occurs immediately after a read
+        """
         if not (0 <= address < self.storage_size * self.blocks_per_bucket):
             raise IndexError("address out of range")
 
         # Remap block to a new leaf node
         old_leaf_node = self.position_map[address]
         self.position_map[address] = secrets.randbelow(self.leaf_nodes)
-
-        # If the block is in the stash already, leave it be
-        if address in self.stash:
-            return
 
         # Find the leaf node this block is on the path to
         encrypted_blocks = self.send_message_read(self.client_id, old_leaf_node)[1:]
@@ -234,6 +277,13 @@ class ClientOram:
         return nonce + ciphertext_block
 
     def _write_blocks_from_stash(self, leaf_node: int) -> None:
+        """
+        Write blocks from the stash to the server to a specific path
+        All blocks from the stash that can land in the path are written
+        Always called immediately after _read_block_into_stash
+        Responsible for ensuring that not too many blocks are written to each bucket
+        Which would overflow the bucket
+        """
         for i in range(self.levels - 1, -1, -1):
             valid_block_addresses: list[int] = []
             for block_address in self.stash.keys():
@@ -266,7 +316,7 @@ class ClientOram:
 
 
 class ClientOramRecursive:
-    """Recursive variant of Oram with uniform block size at each level of recursive"""
+    """Recursive variant of Oram with uniform block size at each level of recursion"""
 
     def __init__(
         self,
@@ -318,3 +368,6 @@ class ClientOramRecursive:
 
     def __setitem__(self, address: int, block: bytes) -> None:
         return self.write_block(address, block)
+
+    def get_client_size(self) -> int:
+        return int(asizeof.asizeof(self))  # type: ignore[no-untyped-call]

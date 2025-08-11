@@ -26,7 +26,7 @@ def main() -> None:
     server_thread.start()
 
     client_oram = ClientOram(
-        2047,
+        storage_size=2047,
         send_message_read=send_message_read,
         send_message_write=send_message_write,
         send_message_init=send_message_init,
