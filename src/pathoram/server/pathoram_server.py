@@ -1,8 +1,6 @@
 import secrets
 from typing import Callable
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
 from . import constants
 
 
@@ -22,7 +20,6 @@ class ServerOramPerClient:
         self,
         storage_size: int,
         send_message: Callable[[bytes], None],
-        key: bytes,
         block_size: int = constants.DEFAULT_BLOCK_SIZE,
         blocks_per_bucket: int = constants.DEFAULT_BLOCKS_PER_BUCKET,
     ):
@@ -42,8 +39,6 @@ class ServerOramPerClient:
         # Each node is a list of multiple blocks
         self.tree: list[list[bytes]] = [[] for _ in range(self.storage_size)]
 
-        self.aes = AESGCM(key)
-
         self.send_message = send_message
 
         self.blocks_per_bucket = blocks_per_bucket
@@ -58,9 +53,7 @@ class ServerOramPerClient:
         for i in range(self.storage_size):
             for _ in range(self.blocks_per_bucket):
                 nonce: bytes = secrets.token_bytes(12)
-                encrypted_block = self.aes.encrypt(
-                    nonce, dummy_address + dummy_block, associated_data=None
-                )
+                encrypted_block = dummy_address + dummy_block + b"\0" * 16
                 self.tree[i].append(nonce + encrypted_block)
 
     def process_command(self, command: bytes) -> None:
@@ -143,10 +136,8 @@ class ServerOram:
     def __init__(
         self,
         send_message: Callable[[bytes], None],
-        key: bytes,
     ):
         self.send_message = send_message
-        self.key = key
         self.storagePerClient: dict[bytes, ServerOramPerClient] = {}
 
     def process_command(self, command: bytes) -> None:
@@ -167,7 +158,6 @@ class ServerOram:
             self.storagePerClient[client_id] = ServerOramPerClient(
                 storage_size=storage_size,
                 send_message=self.send_message,
-                key=self.key,
                 block_size=block_size,
                 blocks_per_bucket=blocks_per_bucket,
             )

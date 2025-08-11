@@ -37,7 +37,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 88
 lint.select = ["E", "F", "I", "UP"]
-ignore = ["E501"]
+lint.ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "packages"]
