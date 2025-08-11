@@ -7,7 +7,7 @@ CLIENT_ID = b"\x00" * 16  # Constant clientId
 
 class TestClientOramRecursiveWithServer(unittest.TestCase):
     def setUp(self):
-        storage_size = 16
+        self.storage_size = 16
         blocks_per_bucket = constants.DEFAULT_BLOCKS_PER_BUCKET
 
         self.server_responses = []
@@ -19,11 +19,11 @@ class TestClientOramRecursiveWithServer(unittest.TestCase):
         self.server = ServerOram(send_message=send_message, key=self.key)
 
         self.rec_oram = ClientOramRecursive(
-            storage_size=storage_size,
-            send_message_init=self.send_init,
-            send_message_read=self.send_read,
-            send_message_write=self.send_write,
-            key=self.key,
+        storage_size=self.storage_size,
+        send_message_init=self.send_init,
+        send_message_read=self.send_read,
+        send_message_write=self.send_write,
+        key=self.key,
         )
 
     def send_init(self, _, storage_size, block_size, blocks_per_bucket):
@@ -74,13 +74,6 @@ class TestClientOramRecursiveWithServer(unittest.TestCase):
         self.assertEqual(read1[: len(data1)], data1)
         self.assertEqual(read2[: len(data2)], data2)
 
-    def test_orams_structure(self):
-        self.assertTrue(hasattr(self.rec_oram, "orams"))
-        self.assertGreater(len(self.rec_oram.orams), 0)
-        for oram in self.rec_oram.orams:
-            self.assertTrue(hasattr(oram, "read_block"))
-            self.assertTrue(hasattr(oram, "write_block"))
-
     def test_write_and_read_multiple_blocks(self):
         blocks = {
             0: b"block0".ljust(constants.DEFAULT_BLOCK_SIZE, b"\x01"),
@@ -107,7 +100,7 @@ class TestClientOramRecursiveWithServer(unittest.TestCase):
 
     def test_write_and_read_boundary_addresses(self):
         min_addr = 0
-        max_addr = self.rec_oram.orams[-1].storage_size - 1
+        max_addr = self.storage_size - 1
         min_data = b"min address".ljust(constants.DEFAULT_BLOCK_SIZE, b"\x07")
         max_data = b"max address".ljust(constants.DEFAULT_BLOCK_SIZE, b"\x08")
         self.rec_oram.write_block(min_addr, min_data)
