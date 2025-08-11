@@ -248,6 +248,7 @@ def main():
 
     find_best_params(df)
 
+    plot_latency_vs_throughput(df)
     plot_throughput_vs_storage_size(df)
     plot_client_size_vs_storage_size(df)
     plot_bandwidth_overhead_vs_block_size(df)
