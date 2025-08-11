@@ -124,9 +124,109 @@ def analyze_read_write_ratio(df):
     plt.close()
 
 
+def find_best_params(df):
+    reliable_df = df[df["stash_overflow_count"] == 0].copy()  # should be none
+
+    # usecase - High-Throughput Computing
+    # Maximize operations per second
+    print("\nUse Case: High-Throughput Computing")
+    best_throughput = reliable_df.sort_values(by="throughput", ascending=False).iloc[0]
+    print(
+        best_throughput[
+            [
+                "config_storage_size",
+                "config_block_size",
+                "config_blocks_per_bucket",
+                "config_use_recursive",
+                "throughput",
+                "client_size",
+                "bandwidth_overhead",
+            ]
+        ]
+    )
+
+    # usecase - Constrained IoT/Mobile Device
+    # Minimize client-side memory usage.
+    print("\nUse Case: Constrained Device (Minimize Client Memory)")
+    best_client_size = reliable_df.sort_values(by="client_size", ascending=True).iloc[0]
+    print(
+        best_client_size[
+            [
+                "config_storage_size",
+                "config_block_size",
+                "config_blocks_per_bucket",
+                "config_use_recursive",
+                "throughput",
+                "client_size",
+                "bandwidth_overhead",
+            ]
+        ]
+    )
+
+    # usecase - Metered/Slow Network
+    # Minimize bandwidth overhead.
+    print("\nUse Case: Metered Network (Minimize Bandwidth Overhead)")
+    best_bandwidth = reliable_df.sort_values(
+        by="bandwidth_overhead", ascending=True
+    ).iloc[0]
+    print(
+        best_bandwidth[
+            [
+                "config_storage_size",
+                "config_block_size",
+                "config_blocks_per_bucket",
+                "config_use_recursive",
+                "throughput",
+                "client_size",
+                "bandwidth_overhead",
+            ]
+        ]
+    )
+
+    # usecase - Balanced/General Purpose
+    # A good mix of throughput, client size, and bandwidth.
+    # We create a composite score to rank them. Lower is better.
+    print("\nUse Case: Balanced / General Purpose")
+    # fix
+    balanced_df = reliable_df.copy()
+    balanced_df["norm_throughput"] = 1 - (
+        balanced_df["throughput"] / balanced_df["throughput"].max()
+    )
+    balanced_df["norm_client_size"] = (
+        balanced_df["client_size"] / balanced_df["client_size"].max()
+    )
+    balanced_df["norm_bandwidth"] = (
+        balanced_df["bandwidth_overhead"] / balanced_df["bandwidth_overhead"].max()
+    )
+    balanced_df["performance_score"] = (
+        balanced_df["norm_throughput"]
+        + balanced_df["norm_client_size"]
+        + balanced_df["norm_bandwidth"]
+    )
+    best_balanced = balanced_df.sort_values(
+        by="performance_score", ascending=True
+    ).iloc[0]
+    print(
+        best_balanced[
+            [
+                "config_storage_size",
+                "config_block_size",
+                "config_blocks_per_bucket",
+                "config_use_recursive",
+                "throughput",
+                "client_size",
+                "bandwidth_overhead",
+                "performance_score",
+            ]
+        ]
+    )
+
+
 def main():
     df = load_data()
     df = calculate_derived_metrics(df)
+
+    find_best_params(df)
 
     plot_throughput_vs_storage_size(df)
     plot_client_size_vs_storage_size(df)
