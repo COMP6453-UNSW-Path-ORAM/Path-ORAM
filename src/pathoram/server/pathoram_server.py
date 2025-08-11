@@ -107,7 +107,7 @@ class ServerOram:
         send_message: Callable[[bytes], None],
     ):
         self.send_message = send_message
-        self.storagePerClient: dict[bytes, OramPerClient] = {}
+        self.storagePerClient: dict[bytes, ServerOramPerClient] = {}
 
     def process_command(self, command: bytes) -> None:
         client_id, command = command[:16], command[16:]
