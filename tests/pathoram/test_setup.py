@@ -4,7 +4,7 @@ Sets up client and server for testing.
 
 import queue
 import threading
-from typing import Optional
+from typing import Callable, Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -17,7 +17,7 @@ from pathoram.server.pathoram_server import ServerOram
 class TestOram:
     """contains the required setup and teardown functions for pytest fixtures."""
 
-    def setup(self, storage_size: int):
+    def setup(self, storage_size: int) -> None:
         self.storage_size = storage_size
 
         self.client_message_queue: queue.Queue[bytes] = queue.Queue()
@@ -54,9 +54,10 @@ class TestOram:
             key=key,
         )
 
-    def teardown(self):
+    def teardown(self) -> None:
         self.stop_event.set()
         self.server_message_queue.put(b"")
+        assert self.server_thread is not None
         self.server_thread.join()
 
 
@@ -65,10 +66,16 @@ def watch_for_messages_server(test_oram: TestOram) -> None:
         command = test_oram.server_message_queue.get()
         test_oram.server_last_queue_obj = command
         if not test_oram.stop_event.is_set():
+            assert test_oram.server_oram is not None
             test_oram.server_oram.process_command(command)
 
 
-def create_send_functions(test_oram: TestOram):
+def create_send_functions(test_oram: TestOram) -> tuple[
+        Callable[[bytes, int], bytes],
+        Callable[[bytes, int, bytes], None],
+        Callable[[bytes, int, int, int], None],
+        Callable[[bytes], None]
+]:
     def send_message_init(
         client_id: bytes, storage_size: int, block_size: int, blocks_per_bucket: int
     ) -> None:
@@ -101,8 +108,8 @@ def create_send_functions(test_oram: TestOram):
     return send_message_read, send_message_write, send_message_init, send_message_server
 
 
-def pad(data: bytes, block_size: int = DEFAULT_BLOCK_SIZE):
+def pad(data: bytes, block_size: int = DEFAULT_BLOCK_SIZE) -> bytes:
     """pads any data short of the block_size"""
     if len(data) > block_size:
         return data
-    return data + (DEFAULT_BLOCK_SIZE - len(data)) * b"\x00"
+    return data + (block_size - len(data)) * b"\x00"
