@@ -10,7 +10,6 @@ from .bit_util import bit_ceil, get_bucket
 
 
 class PositionMap:
-
     """
     The position map stores the leaf node each block is stored on the path to.
     It is accessed similarly to a hashmap, with the mapping:
@@ -20,14 +19,13 @@ class PositionMap:
     It is backed either by a list, or by another oram, as described in the recursion section of the Path ORAM paper.
     This backing choice is abstracted away from the user.
     """
+
     def __init__(self, num_positions: int, block_size: int, leaf_nodes: int):
         """
         Instantiate a new position map.
         The position map is initially filled with uniformly random leaf nodes,
         as specified in the Path ORAM paper.
         """
-        leaf_nodes = (storage_size + 1) // 2
-        self.position_map: Union[list[bytes], ClientOram] = []
         self.num_address_per_block = block_size // constants.ADDRESS_SIZE
         self.num_blocks = (
             num_positions + self.num_address_per_block - 1
@@ -58,12 +56,12 @@ class PositionMap:
         return len(self.blocks)
 
     def __getitem__(self, address: int) -> int:
-        address, i = divmod(address, self.num_address_per_block)
-
         """
         Read from the position map.
         Used for determining the leaf node a block is recorded as being stored at.
         """
+        address, i = divmod(address, self.num_address_per_block)
+
         return int.from_bytes(
             self.blocks[address][
                 constants.ADDRESS_SIZE * i : constants.ADDRESS_SIZE * (i + 1)
@@ -72,13 +70,13 @@ class PositionMap:
         )
 
     def __setitem__(self, address: int, data: int) -> None:
-        address, i = divmod(address, self.num_address_per_block)
-        block = self.blocks[address]
-        self.blocks[address] = (
         """
         Write to the position map.
         Used for changing the leaf node a block is recorded as being stored at.
         """
+        address, i = divmod(address, self.num_address_per_block)
+        block = self.blocks[address]
+        self.blocks[address] = (
             block[: constants.ADDRESS_SIZE * i]
             + data.to_bytes(constants.ADDRESS_SIZE, byteorder="big")
             + block[constants.ADDRESS_SIZE * (i + 1) :]
