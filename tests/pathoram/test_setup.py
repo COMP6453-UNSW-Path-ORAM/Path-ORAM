@@ -23,21 +23,20 @@ class TestOram:
         
         self.server_last_queue_obj: Optional[bytes] = None
 
-        self.key: Optional[bytes] = None
         self.client_oram: Optional[ClientOram] = None
         self.server_oram: Optional[ServerOram] = None
 
         self.stop_event = threading.Event()
         self.server_thread: Optional[threading.Thread] = None
 
-        self.key = AESGCM.generate_key(bit_length=256)
+        key = AESGCM.generate_key(bit_length=256)
         [ send_message_read, 
          send_message_write, 
          send_message_init, 
          send_message_server ] = create_send_functions(self)
 
         # start server first!
-        self.server_oram = ServerOram(send_message_server, key=self.key)
+        self.server_oram = ServerOram(send_message_server)
         self.server_thread = threading.Thread(
             target=watch_for_messages_server, args=(self,)
         )
@@ -48,7 +47,7 @@ class TestOram:
             send_message_read=send_message_read,
             send_message_write=send_message_write,
             send_message_init=send_message_init,
-            key=self.key,
+            key=key,
         )
 
     def teardown(self):
