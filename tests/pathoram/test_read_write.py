@@ -1,7 +1,7 @@
 '''tests for basic read and write functionality of client to server.'''
 
-import pytest
 import random
+import pytest
 
 from test_setup import TestOram, pad
 
@@ -88,17 +88,20 @@ def test_multi_ops(oram_instance_specific):
     assert data4 == result5
 
 def test_multi_ops_plus(oram_instance):
-    '''test handling of multiple read and write operations.'''
+    '''test handling of many more read and write operations.'''
     data_arr = [b"aaa", b"bbbbb", b"cccccc", b"dd", b"e"]
-    valid_addresses = []
+    address_data_pairs = {}
     for i in range(1000):
+        # write
         addr = random.randint(0,oram_instance.storage_size-1)
         data = pad(data_arr[i%5])
         oram_instance.client_oram.write_block(addr, data)
-        # valid_addresses.append(addr)
-        # valid_addr = random.choice(valid_addresses)
-        # result = oram_instance.client_oram.read_block(valid_addr)
-        # assert result == oram_instance.client_oram.position_map[valid_addr]
+        # add to valid addresses
+        address_data_pairs[addr] = data
+        # random read
+        rand_addr = random.choice(list(address_data_pairs.keys()))
+        result = oram_instance.client_oram.read_block(rand_addr)
+        assert result == address_data_pairs[rand_addr]
 
 def test_nonexistent_read(oram_instance_specific):
     '''test that reading blocks without writing anything should 
@@ -114,3 +117,11 @@ def test_bad_data_len(oram_instance):
         for bad_len_data in data_arr:
             oram_instance.client_oram.write_block(0, bad_len_data)
 
+def test_addr_boundaries(oram_instance):
+    '''tests boundaries of addresses'''
+    with pytest.raises(IndexError):
+        data = pad(b"adddd")
+        storage_size = oram_instance.client_oram.storage_size
+        bad_addresses = [-1, -10, storage_size, storage_size+1]
+        for addr in bad_addresses:
+            oram_instance.client_oram.write_block(addr, data)

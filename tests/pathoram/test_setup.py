@@ -20,6 +20,8 @@ class TestOram:
 
         self.client_message_queue: queue.Queue[bytes] = queue.Queue()
         self.server_message_queue: queue.Queue[bytes] = queue.Queue()
+        
+        self.server_last_queue_obj: Optional[bytes] = None
 
         self.key: Optional[bytes] = None
         self.client_oram: Optional[ClientOram] = None
@@ -42,7 +44,7 @@ class TestOram:
         self.server_thread.start()
 
         self.client_oram = ClientOram(
-            2047,
+            storage_size,
             send_message_read=send_message_read,
             send_message_write=send_message_write,
             send_message_init=send_message_init,
@@ -57,6 +59,7 @@ class TestOram:
 def watch_for_messages_server(test_oram: TestOram) -> None:
     while not test_oram.stop_event.is_set():
         command = test_oram.server_message_queue.get()
+        test_oram.server_last_queue_obj = command
         if not test_oram.stop_event.is_set():
             test_oram.server_oram.process_command(command)
 
