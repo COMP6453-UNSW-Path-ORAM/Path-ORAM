@@ -10,7 +10,21 @@ from .bit_util import bit_ceil, get_bucket
 
 
 class PositionMap:
+    """
+    The position map stores the leaf node each block is stored on the path to.
+    It is accessed similarly to a hashmap, with the mapping:
+    leaf_node = PositionMap[address]
+    where address is in the address-space of blocks exposed to the user of the pathoram client
+    
+    It is backed either by a list, or by another oram, as described in the recursion section of the Path ORAM paper.
+    This backing choice is abstracted away from the user.
+    """
     def __init__(self, storage_size: int, block_size: int):
+        """
+        Instantiate a new position map.
+        The position map is initially filled with uniformly random leaf nodes,
+        as specified in the Path ORAM paper.
+        """
         leaf_nodes = (storage_size + 1) // 2
         self.position_map: Union[list[bytes], ClientOram] = []
         self.num_address_per_block = block_size // constants.ADDRESS_SIZE
@@ -27,10 +41,17 @@ class PositionMap:
 
     @classmethod
     def from_oram(self, oram: "ClientOram", num_address_per_block: int) -> None:
+        """
+        Construct a position map from an oram
+        """
         self.position_map = oram
         self.num_address_per_block = num_address_per_block
 
     def __getitem__(self, address: int) -> int:
+        """
+        Read from the position map
+        Used for determining the leaf node a block is recorded as being stored at
+        """
         block = self.position_map[address // self.num_address_per_block]
         i = address % self.num_address_per_block
         return int.from_bytes(
@@ -39,6 +60,10 @@ class PositionMap:
         )
 
     def __setitem__(self, address: int, data: int) -> None:
+        """
+        Write to the position map
+        Used for changing the leaf node a block is recorded as being stored at
+        """
         block = self.position_map[address // self.num_address_per_block]
         i = address % self.num_address_per_block
         block = (
@@ -122,6 +147,10 @@ class ClientOram:
         )
 
     def read_block(self, address: int) -> bytes:
+        """
+        To read a block, it must be read from the server into the stash,
+        then the stash must be written back to the leaf node that was read from
+        """
         leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         block = self.stash[address]
@@ -135,6 +164,11 @@ class ClientOram:
         return self.read_block(address)
 
     def write_block(self, address: int, block: bytes) -> None:
+        """
+        To read a block, it must be read from the server into the stash,
+        then modified in the stash,
+        then the stash must be written back to the leaf node that was read from
+        """
         leaf_node = self.position_map[address]
         self._read_block_into_stash(address)
         self.stash[address] = block
@@ -144,6 +178,13 @@ class ClientOram:
         return self.write_block(address, block)
 
     def _read_block_into_stash(self, address: int) -> None:
+        """
+        Private method.
+        Reads a block from the server into the local stash
+        This deletes all the blocks along the path read from the server
+        They live exclusively in the stash until the next write
+        Which always occurs immediately after a read
+        """
         if not (0 <= address < self.storage_size * self.blocks_per_bucket):
             raise IndexError("address out of range")
 
@@ -213,6 +254,13 @@ class ClientOram:
         return nonce + ciphertext_block
 
     def _write_blocks_from_stash(self, leaf_node: int) -> None:
+        """
+        Write blocks from the stash to the server to a specific path
+        All blocks from the stash that can land in the path are written
+        Always called immediately after _read_block_into_stash
+        Responsible for ensuring that not too many blocks are written to each bucket
+        Which would overflow the bucket
+        """
         for i in range(self.levels - 1, -1, -1):
             valid_block_addresses: list[int] = []
             for block_address in self.stash.keys():
@@ -245,7 +293,7 @@ class ClientOram:
 
 
 class ClientOramRecursive:
-    """Recursive variant of Oram with uniform block size at each level of recursive"""
+    """Recursive variant of Oram with uniform block size at each level of recursion"""
 
     def __init__(
         self,
