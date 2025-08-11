@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from . import constants
 
 
-class OramPerClient:
+class ServerOramPerClient:
     """This class is intended to be used in the following simple loop
     while True:
         command = wait_for_command()
@@ -124,7 +124,7 @@ class ServerOram:
                 command[constants.ADDRESS_SIZE * 2 : constants.ADDRESS_SIZE * 3],
                 byteorder="big",
             )
-            self.storagePerClient[client_id] = OramPerClient(
+            self.storagePerClient[client_id] = ServerOramPerClient(
                 storage_size=storage_size,
                 send_message=self.send_message,
                 block_size=block_size,

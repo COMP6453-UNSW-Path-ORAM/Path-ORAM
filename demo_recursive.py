@@ -29,7 +29,6 @@ def main() -> None:
         send_message_read=send_message_read,
         send_message_write=send_message_write,
         send_message_init=send_message_init,
-        recursive_depth=1,
         key=key,
     )
 
