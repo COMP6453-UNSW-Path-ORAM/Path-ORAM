@@ -1,8 +1,8 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
 import os
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 sns.set_theme(style="whitegrid")
 if not os.path.exists("plots"):
@@ -26,7 +26,7 @@ def calculate_derived_metrics(df):
     df["total_information"] = df["bytes_read"] + df["bytes_written"]
     # overhead ratio, lower is better
     df["bandwidth_overhead"] = df["total_bandwidth"] / df["total_information"]
-    df["log2_storage_size"] = np.log2(df["config_storage_size"] + 1)
+    df["storage_size"] = df["config_storage_size"]
     return df
 
 
@@ -34,7 +34,7 @@ def plot_throughput_vs_storage_size(df):
     plt.figure(figsize=(12, 7))
     g = sns.lineplot(
         data=df,
-        x="log2_storage_size",
+        x="storage_size",
         y="throughput",
         hue="config_use_recursive",
         style="config_use_recursive",
@@ -43,9 +43,10 @@ def plot_throughput_vs_storage_size(df):
         errorbar="sd",
     )
     g.set_title("Throughput vs. ORAM Storage Size")
-    g.set_xlabel("Log2(Storage Size)")
+    g.set_xlabel("Storage Size")
     g.set_ylabel("Throughput (r/w operations/second)")
     g.legend(title="Recursive ORAM")
+    g.set_xscale("log")
     plt.tight_layout()
     plt.savefig("plots/throughput_vs_storage_size.png")
     plt.close()
@@ -55,7 +56,7 @@ def plot_client_size_vs_storage_size(df):
     plt.figure(figsize=(12, 7))
     g = sns.lineplot(
         data=df,
-        x="log2_storage_size",
+        x="storage_size",
         y="client_size",
         hue="config_use_recursive",
         style="config_use_recursive",
@@ -64,9 +65,10 @@ def plot_client_size_vs_storage_size(df):
         errorbar="sd",
     )
     g.set_title("Client-Side Memory Usage vs. ORAM Storage Size")
-    g.set_xlabel("Log2(Storage Size)")
+    g.set_xlabel("Storage Size")
     g.set_ylabel("Client Memory (bytes)")
     g.legend(title="Recursive ORAM")
+    g.set_xscale("log")
     plt.yscale("log")
     plt.tight_layout()
     plt.savefig("plots/client_size_vs_storage_size.png")
@@ -74,9 +76,10 @@ def plot_client_size_vs_storage_size(df):
 
 
 def plot_bandwidth_overhead_vs_block_size(df):
+    df_fixed_storage = df[df.config_storage_size == 2047]
     plt.figure(figsize=(12, 7))
     g = sns.lineplot(
-        data=df,
+        data=df_fixed_storage,
         x="config_block_size",
         y="bandwidth_overhead",
         hue="config_use_recursive",
@@ -85,7 +88,7 @@ def plot_bandwidth_overhead_vs_block_size(df):
         dashes=False,
         errorbar="sd",
     )
-    g.set_title("Bandwidth Overhead vs. Block Size (lower is better)")
+    g.set_title("Bandwidth Overhead vs. Block Size (storage size = 2047)")
     g.set_xlabel("Block Size (bytes)")
     g.set_ylabel("Bandwidth Overhead (transmitted bytes / information bytes)")
     g.legend(title="Recursive ORAM")

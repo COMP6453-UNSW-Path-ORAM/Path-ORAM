@@ -129,7 +129,7 @@ class ClientOram:
         return block
 
     def get_client_size(self) -> int:
-        return asizeof.asizeof(self)
+        return int(asizeof.asizeof(self))  # type: ignore[no-untyped-call]
 
     def __getitem__(self, address: int) -> bytes:
         return self.read_block(address)
@@ -304,4 +304,4 @@ class ClientOramRecursive:
         return self.write_block(address, block)
 
     def get_client_size(self) -> int:
-        return asizeof.asizeof(self)
+        return int(asizeof.asizeof(self))  # type: ignore[no-untyped-call]
