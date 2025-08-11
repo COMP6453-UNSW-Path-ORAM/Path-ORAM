@@ -18,7 +18,7 @@ def main() -> None:
     key = AESGCM.generate_key(bit_length=256)
 
     # start server first!
-    server_oram = ServerOram(send_message_server, key=key)
+    server_oram = ServerOram(send_message_server)
     server_thread = threading.Thread(
         target=watch_for_messages_server, args=(server_oram,)
     )
